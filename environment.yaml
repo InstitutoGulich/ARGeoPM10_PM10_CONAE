@@ -1,0 +1,14 @@
+name: empatia
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - scikit-learn=0.24.1
+  - conda-forge::bs4
+  - conda-forge::optuna
+  - gdal
+  - ipykernel
+  - pandas
+  - seaborn
+  - conda-forge::pre_commit

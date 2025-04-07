@@ -3,9 +3,9 @@ from datetime import datetime as dt
 from operator import itemgetter
 from typing import Dict, List, Tuple
 
-import gdal
 import numpy as np
 import rasterio
+from osgeo import gdal
 from rasterio.merge import merge
 from rasterio.warp import Resampling, calculate_default_transform, reproject
 

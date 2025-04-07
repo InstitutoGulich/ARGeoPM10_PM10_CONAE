@@ -3,6 +3,7 @@ from typing import List
 
 from empatia.etl.downloader import get_data
 from empatia.settings import MERRA_DATASET_PATH
+from empatia.settings.credentials import NASA_TOKEN
 from empatia.settings.log import logger
 
 
@@ -46,5 +47,6 @@ def get_merra_files(
         "VARIABLES": ",".join(variables),
     }
 
+    headers = {"Authorization": f"Bearer {NASA_TOKEN}"}
     logger.info(f"Downloading MERRA2 product: {product}")
-    get_data(base_url, f"{dst_path}{product}", file_format, params=params)
+    get_data(base_url + filename, f"{dst_path}{product}", file_format, headers=headers)

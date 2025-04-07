@@ -73,9 +73,9 @@ RUN \
 ARG BUIILD_PACKAGES="vim bzip2 unzip make gcc g++ git libglib2.0-0 libsm6 libxrender1"
 
 RUN apt-get update && \
-  apt-get install -y $BUIILD_PACKAGES && \
-  apt-get install -y grass grass-doc && \
-  rm -rf /var/lib/apt/lists/*
+    apt-get install -y $BUIILD_PACKAGES && \
+    apt-get install -y grass grass-doc && \
+    rm -rf /var/lib/apt/lists/*
 
 ADD setup.py setup.py
 ADD requirements.txt requirements.txt
@@ -89,6 +89,6 @@ WORKDIR /code
 
 RUN grass --text -c EPSG:4326 grass_data/LatLon/
 
-ENV PYTHONPATH /code
+ENV PYTHONPATH=/code
 
 ENTRYPOINT ["/code/docker_entrypoint.sh"]

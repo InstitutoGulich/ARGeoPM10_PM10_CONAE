@@ -64,24 +64,26 @@ ICA_PATH = "CONAE_MOD_CDA_ARGeoPM10_ICAPM10"
 # ETL's
 DEFAULT_DATE_FORMAT = "%Y-%m-%d"
 
+MODIS_BASE_URL = "https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives"
 MODIS_REGION = {"north": -21.78, "south": -55.05, "east": -53.64, "west": -73.57}
 
 MAIAC_PRODUCT = "MCD19A2"
-MAIAC_COLLECTION = 6
+MAIAC_COLLECTION = 61
 MAIAC_BANDS = {0: "Optical_Depth_047", 5: "AOD_QA"}
-
 
 VIIRS_PRODUCT = "VNP46A1"
 VIIRS_COLLECTION = 5000
 VIIRS_DATE_START = f"{dt.datetime.now().year}-04-01"
 VIIRS_DATE_END = f"{ dt.datetime.now().year}-06-30"
+VIIRS_DATE_START = "2024-04-01"
+VIIRS_DATE_END = "2024-06-30"
 XML_VIIRS_NAME = "Promedio de Abril, Mayo y Junio  {} de VNP46A1,"
-
 
 MERRA_VERSION = "5.12.4"
 MERRA_REGION = ["-55.05", "-73.57", "-21.78", "-53.64"]
 MERRA_BASE_URL = (
-    "https://goldsmr{version}.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi"
+    # "https://goldsmr{version}.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi"
+    "https://data.gesdisc.earthdata.nasa.gov/"
 )
 MERRA_SHORTNAME = "M2I3NVASM"
 

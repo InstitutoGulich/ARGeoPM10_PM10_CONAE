@@ -4,21 +4,18 @@ import itertools
 import json
 import math
 import os
-
 from collections import defaultdict
-from pyspatialml import Raster
 from typing import Any, DefaultDict, Dict, List, Tuple
 
+from pyspatialml import Raster
 
 from empatia.etl.merra_data_source import get_merra_files
 from empatia.etl.modis_data_source import get_modis_files
 from empatia.etl.transformers import get_modis_mosaic, get_viirs_mosaic
 from empatia.model.estimator import PM10Estimator
 from empatia.settings import (
-    DAILY_PM10_TEMPLATE_PATH,
     DOMAIN_DATA_PATH,
     ICA_COLOR_RULES_PATH,
-    ICA_TEMPLATE_PATH,
     MERRA_DATASET_PATH,
     MODEL_PATH,
     MODIS_DATASET_PATH,
@@ -54,7 +51,6 @@ from empatia.settings.constants import (
 )
 from empatia.settings.log import logger
 from empatia.utils import (
-    create_xml,
     date_range,
     get_qa_class,
     remove_file,
@@ -225,10 +221,10 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
         else get_dates_to_download(log_file, today)
     )
 
-    logger.info("Get VIIRS data")
-    viirs_file_path = get_viirs_dataset_path(today.year)
-    if not os.path.exists(viirs_file_path):
-        viirs_file_path = get_viirs_dataset_path(today.year - 1)
+    # logger.info("Get VIIRS data")
+    # viirs_file_path = get_viirs_dataset_path(today.year)
+    # if not os.path.exists(viirs_file_path):
+    #    viirs_file_path = get_viirs_dataset_path(today.year - 1)
 
     logger.info("Setting domain...")
     set_domain(DOMAIN_DATA_PATH)
@@ -240,6 +236,13 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
     for date in dates_to_download:
         logger.info(f"Date: {date}")
         processed_dir_path = f"{PROCESSED_DATA_PATH}/{date}/"
+
+        logger.info("Get VIIRS data")
+        viirs_file_path = get_viirs_dataset_path(2022)
+        if not os.path.exists(viirs_file_path):
+            viirs_file_path = get_viirs_dataset_path(date.year - 1)
+        logger.info(f"Using {viirs_file_path}...")
+
         try:
             if not os.path.exists(processed_dir_path):
                 os.mkdir(processed_dir_path)
@@ -340,20 +343,20 @@ def computing_ica(
     export_multiband_gtiff([rname], ica_file, f"{ica_dir}{ica_file}", NODATA)
     # raster2gtiff(rname, f"{p_dir}{ica_file}")
     # Create XML
-    metadata = dict(
-        zip(
-            ICA_PM10_METADATA_CODES.values(),
-            [
-                ica_file,
-                creation_date,
-                _max,
-                _min,
-                _max,
-                _min,
-                ", ".join(products),
-            ],
-        )
-    )
+    # metadata = dict(
+    #     zip(
+    #         ICA_PM10_METADATA_CODES.values(),
+    #         [
+    #             ica_file,
+    #             creation_date,
+    #             _max,
+    #             _min,
+    #             _max,
+    #             _min,
+    #             ", ".join(products),
+    #         ],
+    #     )
+    # )
     # Uncomment to use metadata
     # create_xml(ICA_TEMPLATE_PATH, metadata, f"{ica_dir}{ica_file}")
     # Export PNG
@@ -387,6 +390,7 @@ def computing_pm_10(
         pm10_file_path = (
             f"{PM10_PREFIX_FILENAME}_{min_date.strftime('%Y%m%d_%H%M%S')}_v001"
         )
+        print(f"######## Features Files {features_files}")
         predict(estimator, features_files, f"{processed_dir_path}{pm10_file_path}")
         pm10_file = f"{processed_dir_path}{pm10_file_path}.tif"
         log_prediction[sensor].append(pm10_file)
@@ -419,22 +423,22 @@ def computing_pm_10(
             fname.format(min_date.strftime("%Y%m%d"))
             for fname in XML_MERRA_PRODUCT_NAMES
         ]
-        metadata = dict(
-            zip(
-                DAILY_PM10_METADATA_CODES.values(),
-                [
-                    pm10_file_path,
-                    creation_date,
-                    _max,
-                    _min,
-                    _max2,
-                    _min2,
-                    ", ".join(maiac_files),
-                    ", ".join(merra_files),
-                    XML_VIIRS_NAME.format(min_date.year),
-                ],
-            )
-        )
+        # metadata = dict(
+        #     zip(
+        #         DAILY_PM10_METADATA_CODES.values(),
+        #         [
+        #             pm10_file_path,
+        #             creation_date,
+        #             _max,
+        #             _min,
+        #             _max2,
+        #             _min2,
+        #             ", ".join(maiac_files),
+        #             ", ".join(merra_files),
+        #             XML_VIIRS_NAME.format(min_date.year),
+        #         ],
+        #     )
+        # )
         # Uncomment to use metadata
         # create_xml(DAILY_PM10_TEMPLATE_PATH, metadata, f"{pm10_dir}{pm10_file_path}")
         # Export PNG
@@ -458,7 +462,8 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
             current_merra_path = (
                 f"NETCDF:{MERRA_DATASET_PATH}/{shortname}/" f"{date}/{product}.nc:{var}"
             )
-            merra_band = (int(min_date.hour) % 12) + 1
+            # merra_band = (int(min_date.hour) % 12) + 1
+            merra_band = int(min_date.hour) + 1
             if shortname == MERRA_SHORTNAME:
                 merra_band = (math.trunc(int(min_date.hour) / 3) + 1) - 4
 
@@ -492,6 +497,7 @@ def process_modis_data(
     null_files = []  # type: ignore
     modis_outputs = []  # type: ignore
     for band, prefix in MAIAC_BANDS.items():
+        logger.info(f"********* {band} {prefix} *********")
         modis_outputs = get_modis_mosaic(
             current_maiac_path, band, prefix, processed_dir_path
         )
@@ -639,27 +645,27 @@ def monthly_pipeline(ndays: int) -> None:
         # Define file name and metadata
         refresh_region()
         pcode = MONTHLY_PRODUCT_CODES[sensor]
-        xml_template = MONTHLY_PRODUCT_TEMPLATES[sensor]
+        # xml_template = MONTHLY_PRODUCT_TEMPLATES[sensor]
         creation_date = dt.datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
         first_day = "".join(daily_preds[sensor][0].split("/")[-2].split("-"))
         last_day = "".join(daily_preds[sensor][-1].split("/")[-2].split("-"))
         group_name = f"{PM10_PREFIX_FILENAME}m_{first_day}_{last_day}_{pcode}_v001"
-        metadata = dict(
-            zip(
-                MONTHLY_PM10_METADATA_CODES.values(),
-                [
-                    group_name,
-                    creation_date,
-                    _max,
-                    _min,
-                    _max2,
-                    _min2,
-                    _max3,
-                    _min3,
-                    ", ".join(products),
-                ],
-            )
-        )
+        # metadata = dict(
+        #     zip(
+        #         MONTHLY_PM10_METADATA_CODES.values(),
+        #         [
+        #             group_name,
+        #             creation_date,
+        #             _max,
+        #             _min,
+        #             _max2,
+        #             _min2,
+        #             _max3,
+        #             _min3,
+        #             ", ".join(products),
+        #         ],
+        #     )
+        # )
         # Create folder to save data
         output_dir = f"{folder}{group_name}"
         if not os.path.exists(output_dir):

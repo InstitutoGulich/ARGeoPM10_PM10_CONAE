@@ -15,12 +15,14 @@ from empatia.etl.transformers import get_modis_mosaic, get_viirs_mosaic
 from empatia.model.estimator import PM10Estimator
 from empatia.settings import (
     DOMAIN_DATA_PATH,
+    ICA_TEMPLATE_PATH,
     ICA_COLOR_RULES_PATH,
     MERRA_DATASET_PATH,
     MODEL_PATH,
     MODIS_DATASET_PATH,
     MONTHLY_PRODUCT_TEMPLATES,
     PM10_COLOR_RULES_PATH,
+    DAILY_PM10_TEMPLATE_PATH,
     PREDICTION_DATA_PATH,
     PROCESSED_DATA_PATH,
     REGION_DATA_PATH,
@@ -56,7 +58,9 @@ from empatia.utils import (
     remove_file,
     remove_folders_from_date,
     zip_directory,
+    create_xml
 )
+
 from empatia.utils.grass import (
     apply_mask,
     clean_db,
@@ -343,22 +347,22 @@ def computing_ica(
     export_multiband_gtiff([rname], ica_file, f"{ica_dir}{ica_file}", NODATA)
     # raster2gtiff(rname, f"{p_dir}{ica_file}")
     # Create XML
-    # metadata = dict(
-    #     zip(
-    #         ICA_PM10_METADATA_CODES.values(),
-    #         [
-    #             ica_file,
-    #             creation_date,
-    #             _max,
-    #             _min,
-    #             _max,
-    #             _min,
-    #             ", ".join(products),
-    #         ],
-    #     )
-    # )
+    metadata = dict(
+        zip(
+            ICA_PM10_METADATA_CODES.values(),
+            [
+                ica_file,
+                creation_date,
+                _max,
+                _min,
+                _max,
+                _min,
+                ", ".join(products),
+            ],
+        )
+    )
     # Uncomment to use metadata
-    # create_xml(ICA_TEMPLATE_PATH, metadata, f"{ica_dir}{ica_file}")
+    create_xml(ICA_TEMPLATE_PATH, metadata, f"{ica_dir}{ica_file}")
     # Export PNG
     raster2png(rname, f"{ica_dir}{ica_file}")
     # Remove aux.xml temporary files
@@ -423,24 +427,24 @@ def computing_pm_10(
             fname.format(min_date.strftime("%Y%m%d"))
             for fname in XML_MERRA_PRODUCT_NAMES
         ]
-        # metadata = dict(
-        #     zip(
-        #         DAILY_PM10_METADATA_CODES.values(),
-        #         [
-        #             pm10_file_path,
-        #             creation_date,
-        #             _max,
-        #             _min,
-        #             _max2,
-        #             _min2,
-        #             ", ".join(maiac_files),
-        #             ", ".join(merra_files),
-        #             XML_VIIRS_NAME.format(min_date.year),
-        #         ],
-        #     )
-        # )
+        metadata = dict(
+            zip(
+                DAILY_PM10_METADATA_CODES.values(),
+                [
+                    pm10_file_path,
+                    creation_date,
+                    _max,
+                    _min,
+                    _max2,
+                    _min2,
+                    ", ".join(maiac_files),
+                    ", ".join(merra_files),
+                    XML_VIIRS_NAME.format(min_date.year),
+                ],
+            )
+        )
         # Uncomment to use metadata
-        # create_xml(DAILY_PM10_TEMPLATE_PATH, metadata, f"{pm10_dir}{pm10_file_path}")
+        create_xml(DAILY_PM10_TEMPLATE_PATH, metadata, f"{pm10_dir}{pm10_file_path}")
         # Export PNG
         raster2png(pm10_band_name, f"{pm10_dir}{pm10_file_path}")
         # Remove aux.xml temporary files
@@ -645,27 +649,27 @@ def monthly_pipeline(ndays: int) -> None:
         # Define file name and metadata
         refresh_region()
         pcode = MONTHLY_PRODUCT_CODES[sensor]
-        # xml_template = MONTHLY_PRODUCT_TEMPLATES[sensor]
+        xml_template = MONTHLY_PRODUCT_TEMPLATES[sensor]
         creation_date = dt.datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
         first_day = "".join(daily_preds[sensor][0].split("/")[-2].split("-"))
         last_day = "".join(daily_preds[sensor][-1].split("/")[-2].split("-"))
         group_name = f"{PM10_PREFIX_FILENAME}m_{first_day}_{last_day}_{pcode}_v001"
-        # metadata = dict(
-        #     zip(
-        #         MONTHLY_PM10_METADATA_CODES.values(),
-        #         [
-        #             group_name,
-        #             creation_date,
-        #             _max,
-        #             _min,
-        #             _max2,
-        #             _min2,
-        #             _max3,
-        #             _min3,
-        #             ", ".join(products),
-        #         ],
-        #     )
-        # )
+        metadata = dict(
+            zip(
+                MONTHLY_PM10_METADATA_CODES.values(),
+                [
+                    group_name,
+                    creation_date,
+                    _max,
+                    _min,
+                    _max2,
+                    _min2,
+                    _max3,
+                    _min3,
+                    ", ".join(products),
+                ],
+            )
+        )
         # Create folder to save data
         output_dir = f"{folder}{group_name}"
         if not os.path.exists(output_dir):
@@ -676,7 +680,7 @@ def monthly_pipeline(ndays: int) -> None:
 
         # Export XML
         # Uncomment to use metadata
-        # create_xml(xml_template, metadata, f"{output_dir}/{group_name}")
+        create_xml(xml_template, metadata, f"{output_dir}/{group_name}")
 
         # Export PNG only PM10 monthly mean
         rname = f"PM10_media_{sensor}"

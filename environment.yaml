@@ -11,4 +11,5 @@ dependencies:
   - ipykernel
   - pandas
   - seaborn
-  - conda-forge::pre_commit
+  - conda-forge::pre_commit 
+  - rasterio

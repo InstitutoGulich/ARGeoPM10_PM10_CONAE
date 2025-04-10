@@ -15,7 +15,7 @@ crs_project = "EPSG:4326"  # WGS84
 merra_domain = box(-63.4, -39.3, -57.7, -34)  # Bounding box for cropping #Bahia Blanca
 tile = 'h13v12'
 
-for year in range(2016, 2020):
+for year in range(2010, 2020):
 
     root_folder = f'/home/msgro/work/empatia/data/model/MAIAC/{tile}/{year}/'
     dirin = f'{root_folder}/tif'  # Input directory

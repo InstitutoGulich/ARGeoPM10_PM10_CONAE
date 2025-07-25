@@ -1,12 +1,14 @@
-FROM python:3.8.2-slim-buster
+#FROM python:3.8.2-slim-buster 
+FROM python:3.8.20-slim-bullseye
 
 ARG GDAL_VERSION=3.0.4
 ARG SOURCE_DIR=/usr/local/src/python-gdal
 
 RUN \
 # Install runtime dependencies
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
+    apt-get update 
+
+RUN apt-get install -y --no-install-recommends \
         build-essential \
         wget \
         automake libtool pkg-config libsqlite3-dev sqlite3 \
@@ -21,10 +23,10 @@ RUN \
         libhdf4-alt-dev \
         libhdf5-serial-dev \
         libopenjp2-7-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    \
+    && rm -rf /var/lib/apt/lists/* 
+    
 # Build against PROJ master (which will be released as PROJ 6.0)
-    && wget "http://download.osgeo.org/proj/proj-6.0.0.tar.gz" \
+RUN wget "http://download.osgeo.org/proj/proj-6.0.0.tar.gz" \
     && tar -xzf "proj-6.0.0.tar.gz" \
     && mv proj-6.0.0 proj \
     && echo "#!/bin/sh" > proj/autogen.sh \
@@ -39,10 +41,10 @@ RUN \
     && rm /usr/local/lib/libproj.so* \
     && rm /usr/local/lib/libproj.la \
     && ln -s libinternalproj.so.15.0.0 /usr/local/lib/libinternalproj.so.15 \
-    && ln -s libinternalproj.so.15.0.0 /usr/local/lib/libinternalproj.so \
-    \
+    && ln -s libinternalproj.so.15.0.0 /usr/local/lib/libinternalproj.so 
+    
 # Get latest GDAL source
-    && mkdir -p "${SOURCE_DIR}" \
+RUN mkdir -p "${SOURCE_DIR}" \
     && cd "${SOURCE_DIR}" \
     && wget "http://download.osgeo.org/gdal/${GDAL_VERSION}/gdal-${GDAL_VERSION}.tar.gz" \
     && tar -xvf "gdal-${GDAL_VERSION}.tar.gz" \
@@ -74,7 +76,7 @@ ARG BUIILD_PACKAGES="vim bzip2 unzip make gcc g++ git libglib2.0-0 libsm6 libxre
 
 RUN apt-get update && \
     apt-get install -y $BUIILD_PACKAGES && \
-    apt-get install -y grass grass-doc && \
+    apt-get install -y grass=76 grass-doc && \
     rm -rf /var/lib/apt/lists/*
 
 ADD setup.py setup.py

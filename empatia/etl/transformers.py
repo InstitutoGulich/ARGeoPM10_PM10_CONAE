@@ -160,8 +160,14 @@ def modis_hdf_2_tiff(
     Return:
         List of orbits for the given subset
     """
-    hdf_ds = gdal.Open(infile, gdal.GA_ReadOnly)
-    band_ds = gdal.Open(hdf_ds.GetSubDatasets()[subset][0], gdal.GA_ReadOnly)
+    try:
+        hdf_ds = gdal.Open(infile, gdal.GA_ReadOnly)
+        band_ds = gdal.Open(hdf_ds.GetSubDatasets()[subset][0], gdal.GA_ReadOnly)
+    except IndexError:
+        raise IndexError(
+            f"Subset {subset} not found in {infile}. "
+            "Check the available subdatasets in the HDF file."
+        )
 
     # read metadata
     metadata = band_ds.GetMetadata_Dict()

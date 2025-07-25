@@ -231,6 +231,7 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
     #    viirs_file_path = get_viirs_dataset_path(today.year - 1)
 
     logger.info("Setting domain...")
+    logger.info(f"Using..{MODEL_PATH}")
     set_domain(DOMAIN_DATA_PATH)
     apply_mask_result = apply_mask(REGION_DATA_PATH)
     total_cells = get_total_cells(apply_mask_result)

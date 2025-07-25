@@ -10,7 +10,8 @@ MERRA_DATASET_PATH = DATASET_PATH / "merra"
 PREDICTION_DATA_PATH = DATASET_PATH / "predict"
 PROCESSED_DATA_PATH = DATASET_PATH / "processed"
 MODEL_DATA_PATH = DATASET_PATH / "model"
-MODEL_PATH = MODEL_DATA_PATH / "model_2021-05-13.pkl"  # "pm10_random_forest.pkl"
+#MODEL_PATH = MODEL_DATA_PATH / "model_2025-04-03_RandomizedSearch.pkl"   # "pm10_random_forest.pkl"
+MODEL_PATH = MODEL_DATA_PATH / "model_2021-05-13.pkl"   # "pm10_random_forest.pkl"
 TRAINING_DATA_PATH = MODEL_DATA_PATH / "training_dataset.csv"
 
 GISBASE, GISDB, LOCATION, MAPSET = grass_setup()

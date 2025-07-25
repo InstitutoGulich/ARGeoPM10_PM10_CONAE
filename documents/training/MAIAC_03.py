@@ -9,12 +9,12 @@ import numpy as np
 nodata_value = -9999
 
 # Load PM station data
-pm_data_path = "/home/msgro/work/empatia/documents/training/estaciones.csv"
+pm_data_path = "/home/msgro/work/empatia/documents/training/estaciones_ceilap.csv"
 pm_data = pd.read_csv(pm_data_path, header=0)
 
 # Input and output directories
 tile = 'h13v12'
-output_file = os.path.join('/home/msgro/work/empatia/data/model', 'MAIAC_pixel_data_pm_stations_2010-2019_INTERPOLADO.csv')
+output_file = os.path.join('/home/msgro/work/empatia/data/model', 'MAIAC_pixel_data_CEILAP_2010-2019_INTERPOLADO.csv')
 
 # Initialize an empty list to store results
 results = []

@@ -87,7 +87,7 @@ $ docker run --name <container_name> --env-file .env -it empatia:<tag_name> /bin
 ```
 
 - Run container
-```
+``` 
 $ docker start <container_name>
 ```
 

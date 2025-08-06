@@ -69,7 +69,7 @@ MODIS_REGION = {"north": -21.78, "south": -55.05, "east": -53.64, "west": -73.57
 
 MAIAC_PRODUCT = "MCD19A2"
 MAIAC_COLLECTION = 61
-MAIAC_BANDS = {0: "Optical_Depth_047", 5: "AOD_QA"}
+MAIAC_BANDS = {0: "Optical_Depth_047", 1: "Optical_Depth_055", 5: "AOD_QA"}
 
 VIIRS_PRODUCT = "VNP46A1"
 VIIRS_COLLECTION = 5000
@@ -80,11 +80,12 @@ VIIRS_DATE_END = "2024-06-30"
 XML_VIIRS_NAME = "Promedio de Abril, Mayo y Junio  {} de VNP46A1,"
 
 MERRA_VERSION = "5.12.4"
-MERRA_REGION = ["-55.05", "-73.57", "-21.78", "-53.64"]
+#MERRA_REGION = ["-55.05", "-73.57", "-21.78", "-53.64"]
+MERRA_REGION = [-55.05, -73.57, -21.78, -53.64]
 MERRA_BASE_URL = (
     #"https://goldsmr{version}.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi"
     #"https://data.gesdisc.earthdata.nasa.gov/"
-    "https://goldsmr4.gesdisc.eosdis.nasa.gov/"
+    "https://goldsmr{version}.gesdisc.eosdis.nasa.gov/"
 )
 MERRA_SHORTNAME = "M2I3NVASM"
 

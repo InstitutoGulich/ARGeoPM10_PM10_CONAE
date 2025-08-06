@@ -23,6 +23,7 @@ def clean_db() -> None:
         exclude="viirs_*",
         type="raster,vector",
         flags="f",
+        quiet=True
     )
 
 
@@ -40,6 +41,7 @@ def raster2gtiff(rinput: str, routput: str) -> None:
         type="Float64",
         flags="c",
         overwrite=True,
+        quiet=True
     )
 
 
@@ -63,6 +65,7 @@ def export_multiband_gtiff(
         flags="fc",
         nodata=nodata,
         overwrite=True,
+        quiet=True
     )
 
 
@@ -79,6 +82,7 @@ def raster2csv(rinput: str, routput: str) -> None:
         output=routput + ".csv",
         separator=",",
         overwrite=True,
+        quiet=True
     )
 
 
@@ -95,6 +99,7 @@ def raster2png(rinput: str, routput: str) -> None:
         output=routput + ".png",
         flags="t",
         overwrite=True,
+        quiet=True
     )
 
 
@@ -105,10 +110,10 @@ def set_domain(rfile: Union[str, Path]) -> None:
         rfile: raster file name
     """
     grass.run_command(
-        "r.in.gdal", input=rfile, output="domain", flags="e", overwrite=True
+        "r.in.gdal", input=rfile, output="domain", flags="e", overwrite=True, quiet=True
     )
 
-    grass.run_command("g.region", raster="domain", flags="p", overwrite=True)
+    grass.run_command("g.region", raster="domain", flags="p", overwrite=True, quiet=True)
 
 
 def get_resampling(rinput: str) -> None:
@@ -124,6 +129,7 @@ def get_resampling(rinput: str) -> None:
         output=rinput,
         method="bilinear",
         overwrite=True,
+        quiet=True
     )
 
 
@@ -132,7 +138,7 @@ def refresh_region() -> None:
     Refresh region
     """
     logger.info("Refresh region...")
-    grass.run_command("g.region", raster="domain", overwrite=True)
+    grass.run_command("g.region", raster="domain", overwrite=True, quiet=True)
 
 
 def apply_mask(raster_dir: Union[str, Path]) -> Any:
@@ -143,10 +149,10 @@ def apply_mask(raster_dir: Union[str, Path]) -> Any:
     """
     logger.info("Applying mask...")
     grass.run_command(
-        "v.in.ogr", input=raster_dir, output="mask", flags="o", overwrite=True
+        "v.in.ogr", input=raster_dir, output="mask", flags="o", overwrite=True, quiet=True
     )
 
-    grass.run_command("r.mask", vect="mask", overwrite="True")
+    grass.run_command("r.mask", vect="mask", overwrite="True", quiet=True)
     region_data = grass.parse_command("g.region", flags="p")
     return json.loads(json.dumps(region_data))
 
@@ -172,7 +178,7 @@ def remove_mask() -> None:
     """
     Remove existing mask
     """
-    grass.run_command("r.mask", flags="r")
+    grass.run_command("r.mask", flags="r", quiet=True)
 
 
 def import_gtiff(rfile: Union[str, Path], name: str) -> None:
@@ -183,7 +189,7 @@ def import_gtiff(rfile: Union[str, Path], name: str) -> None:
         name: raster map name
     """
     logger.info("Importing to gtiff...")
-    grass.run_command("r.in.gdal", input=rfile, output=name, flags="o", overwrite=True)
+    grass.run_command("r.in.gdal", input=rfile, output=name, flags="o", overwrite=True, quiet=True)
 
 
 def import_netcdf(rfile: Union[str, Path], band: int, name: str) -> None:
@@ -196,7 +202,7 @@ def import_netcdf(rfile: Union[str, Path], band: int, name: str) -> None:
     """
     logger.info("Importing netcdf...")
     grass.run_command(
-        "r.in.gdal", input=rfile, output=name, flags="o", band=band, overwrite=True
+        "r.in.gdal", input=rfile, output=name, flags="o", band=band, overwrite=True, quiet=True
     )
 
 
@@ -213,6 +219,7 @@ def compute_mean(rasters: List, name: str) -> None:
         method="average",
         output=name,
         overwrite=True,
+        quiet=True
     )
 
 
@@ -229,6 +236,7 @@ def compute_stddev(rasters: List, name: str) -> None:
         method="stddev",
         output=name,
         overwrite=True,
+        quiet=True
     )
 
 
@@ -278,7 +286,7 @@ def discretize_values(rinput: str, rule_func: Any, name: str) -> None:
         for x in range(raster.shape[1]):
             new_raster[y, x] = rule_func(raster[y, x])
 
-    new_raster.write(mapname=f"{name}", overwrite=True)
+    new_raster.write(mapname=f"{name}", overwrite=True, quiet=True)
 
 
 def reset_color_table(rinput: str, rules: Union[str, Path]) -> None:
@@ -292,6 +300,7 @@ def reset_color_table(rinput: str, rules: Union[str, Path]) -> None:
         "r.colors",
         map=rinput,
         rules=rules,
+        quiet=True
     )
 
 

@@ -56,7 +56,7 @@ for (i in 10:length(files)){
   
   # REPROJECT FROM MODIS Sinusoidal TO WGS84
   aod047pr <- projectRaster(aod047, crs=newproj) #reproyecta a WGS84
-  aod055pr <- projectRaster(aod047, crs=newproj) 
+  aod055pr <- projectRaster(aod055, crs=newproj) 
   
   metadatos <- gdalinfo(filename) #obtiene los metadatos
   orbits=(metadatos[ grep("Orbit", metadatos) ])  #obtiene info de las orbitas

@@ -61,8 +61,8 @@ def search_best_model(X: np.array, y: np.array, model: Any, param_grid: Dict) ->
     rs = RandomizedSearchCV(
         estimator=model,
         param_distributions=param_grid,
-        n_iter=100,
-        cv=3,
+        n_iter=200,
+        cv=5,
         verbose=2,
         random_state=42,
         n_jobs=-1,

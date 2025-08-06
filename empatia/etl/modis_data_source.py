@@ -81,7 +81,6 @@ def get_modis_urls(
 
         soup = BeautifulSoup(html, "html.parser")
         tags = soup("a")
-        urls = []
         for tag in tags:
             u = tag.get("href", None)
             if u.endswith(".hdf") or u.endswith(".h5"):

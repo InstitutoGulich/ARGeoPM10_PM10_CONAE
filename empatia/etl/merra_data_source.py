@@ -218,9 +218,15 @@ def get_merra_files(
         }
     }
     
-    print(f"Requesting subset for {product} on {date_stamp} from {base_url}")
-    print(subset_request)
+    logger.info(f"Requesting subset for {shortname} on {date_stamp} from {base_url}")
     
+    try:
+        dst_path = f"{MERRA_DATASET_PATH}/{shortname}/{date_stamp}/"
+        os.makedirs(dst_path, exist_ok=True)
+    except OSError as e:
+        print(f"Error creating directory {dst_path}: {e}")
+        return
+
     response = get_http_data(subset_request)
     myJobId = response['result']['jobId']
     assert response['result']['Status'] == 'Accepted'
@@ -233,7 +239,7 @@ def get_merra_files(
         'args': {'jobId': myJobId}
     }
 
-    # Check on the job status after a brief nap
+    logger.info(f'{shortname} - Job ID: {myJobId}')
     while response['result']['Status'] in ['Accepted', 'Running']:
         sleep(5)
         response = get_http_data(status_request)
@@ -267,13 +273,11 @@ def get_merra_files(
     opener = urllib.request.build_opener (urllib.request.HTTPBasicAuthHandler (password_manager),urllib.request.HTTPCookieProcessor (cookie_jar))
     urllib.request.install_opener(opener)
 
-    for item in urls:
-        if not item.endswith('.nc4'):
+    for URL in urls:
+        if URL.endswith('.pdf') or URL.strip() == '':
             continue
-        URL = item['link'] 
 
         logger.info(f"Downloading MERRA2 product: {product}")
-        dst_path = f"{MERRA_DATASET_PATH}/{shortname}/{date_stamp}/"
 
         DataRequest = urllib.request.Request(URL)
         DataResponse = urllib.request.urlopen(DataRequest)
@@ -283,8 +287,11 @@ def get_merra_files(
 
         # Save file to working directory
         try:
-            file_ = open(f"{dst_path}{product}", 'wb')
+            file_ = open(f"{dst_path}{product}.nc", 'wb')
             file_.write(DataBody)
             file_.close()
         except requests.exceptions.HTTPError as e:
             print(e)
+
+    logger.info(f"Files downloaded to {dst_path}")
+    return f"{product}.nc"

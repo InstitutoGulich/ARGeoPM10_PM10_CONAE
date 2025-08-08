@@ -6,10 +6,19 @@ from urllib import response
 import urllib.request
 import os
 
+import sys
+import json
+import urllib3
+import certifi
+from time import sleep
+from http.cookiejar import CookieJar
+from urllib.parse import urlencode
+import getpass
+
 from empatia.etl.downloader import get_data
 from empatia.settings import MERRA_DATASET_PATH
 from empatia.settings.constants import MERRA_BASE_URL, MERRA_VERSION
-from empatia.settings.credentials import NASA_TOKEN
+from empatia.settings.credentials import NASA_USER, NASA_PASS
 from empatia.settings.log import logger
 
 from bs4 import BeautifulSoup
@@ -152,32 +161,22 @@ def download(url, filename, file_path, headers=None):
 #    get_data(base_url, f"{dst_path}{product}", file_format, params=params)
 #
 
-import sys
-import json
-import urllib3
-import certifi
-import requests
-from time import sleep
-from http.cookiejar import CookieJar
-import urllib.request
-from urllib.parse import urlencode
-import getpass
 
 def get_http_data(request):
     
     http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',ca_certs=certifi.where())
     url = 'https://disc.gsfc.nasa.gov/service/subset/jsonwsp'
 
-    hdrs = {'Content-Type': 'application/json',
+    headers = {'Content-Type': 'application/json',
             'Accept'      : 'application/json'}
 
     try:
         data = json.dumps(request)
-        r = http.request('POST', url, body=data, headers=hdrs)
+        r = http.request('POST', url, body=data, headers=headers)
         response = json.loads(r.data)
     except urllib3.exceptions.HTTPError as e:
         print(f"HTTP Error: {e}")
-        sys.exit(1)
+        raise
 
     if response['type'] == 'jsonwsp/fault' :
         print(f'API Error: faulty {response["methodname"]} request')
@@ -260,11 +259,8 @@ def get_merra_files(
     except:
         print('Request returned error code %d' % result.status_code)
 
-    username = "EATCONAE"
-    password = "eatConae2019"
-
     password_manager = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-    password_manager.add_password(None, "https://urs.earthdata.nasa.gov", username, password)
+    password_manager.add_password(None, "https://urs.earthdata.nasa.gov", NASA_USER, NASA_PASS)
 
     # Create a cookie jar for storing cookies. This is used to store and return the session cookie #given to use by the data server
     cookie_jar = CookieJar()

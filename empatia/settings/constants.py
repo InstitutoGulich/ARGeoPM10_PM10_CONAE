@@ -81,7 +81,7 @@ XML_VIIRS_NAME = "Promedio de Abril, Mayo y Junio  {} de VNP46A1,"
 
 MERRA_VERSION = "5.12.4"
 #MERRA_REGION = ["-55.05", "-73.57", "-21.78", "-53.64"]
-MERRA_REGION = [-55.05, -73.57, -21.78, -53.64]
+MERRA_REGION = [ -73.57, -55.05, -53.64, -21.78]
 MERRA_BASE_URL = (
     #"https://goldsmr{version}.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi"
     #"https://data.gesdisc.earthdata.nasa.gov/"

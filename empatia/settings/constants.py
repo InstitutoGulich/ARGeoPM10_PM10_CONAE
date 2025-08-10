@@ -92,7 +92,7 @@ MERRA_SHORTNAME = "M2I3NVASM"
 MERRA_DATASETS = [
     {
         "base_url": MERRA_BASE_URL.format(version=4),
-        "product": "MERRA2_400.tavg1_2d_aer_Nx",
+        "product": "MERRA2.tavg1_2d_aer_Nx",
         "shortname": "M2T1NXAER",
         "region": MERRA_REGION,
         "start_hour": "12:30:00",
@@ -104,7 +104,7 @@ MERRA_DATASETS = [
     },
     {
         "base_url": MERRA_BASE_URL.format(version=4),
-        "product": "MERRA2_400.tavg1_2d_flx_Nx",
+        "product": "MERRA2.tavg1_2d_flx_Nx",
         "shortname": "M2T1NXFLX",
         "region": MERRA_REGION,
         "start_hour": "12:30:00",
@@ -114,7 +114,7 @@ MERRA_DATASETS = [
     },
     {
         "base_url": MERRA_BASE_URL.format(version=4),
-        "product": "MERRA2_400.tavg1_2d_rad_Nx",
+        "product": "MERRA2.tavg1_2d_rad_Nx",
         "shortname": "M2T1NXRAD",
         "region": MERRA_REGION,
         "start_hour": "12:30:00",
@@ -124,7 +124,7 @@ MERRA_DATASETS = [
     },
     {
         "base_url": MERRA_BASE_URL.format(version=5),
-        "product": "MERRA2_400.inst3_3d_asm_Nv",
+        "product": "MERRA2.inst3_3d_asm_Nv",
         "shortname": MERRA_SHORTNAME,
         "region": MERRA_REGION,
         "start_hour": "12:00:00",
@@ -135,10 +135,10 @@ MERRA_DATASETS = [
 ]
 
 XML_MERRA_PRODUCT_NAMES = [
-    "MERRA2_400.tavg1_2d_aer_Nx.{}.SUB.nc: (BCCMASS)",
-    "MERRA2_400.tavg1_2d_flx_Nx.{}.SUB.nc: (PBLH, PRECTOT, SPEED, SPEEDMAX, USTAR)",
-    "MERRA2_400.tavg1_2d_rad_Nx.{}.SUB.nc: (ALBEDO, CLDHGH, CLDLOW)",
-    "MERRA2_400.inst3_3d_asm_Nv.{}.SUB.nc: (PS, RH, T, U, V)",
+    "MERRA2.tavg1_2d_aer_Nx.{}.SUB.nc: (BCCMASS)",
+    "MERRA2.tavg1_2d_flx_Nx.{}.SUB.nc: (PBLH, PRECTOT, SPEED, SPEEDMAX, USTAR)",
+    "MERRA2.tavg1_2d_rad_Nx.{}.SUB.nc: (ALBEDO, CLDHGH, CLDLOW)",
+    "MERRA2.inst3_3d_asm_Nv.{}.SUB.nc: (PS, RH, T, U, V)",
 ]
 
 MIN_PERCENTAGE_OF_VALID_DATA = (

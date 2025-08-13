@@ -1,21 +1,128 @@
-from datetime import datetime as dt
-from typing import Dict, List
-import urllib.request
+from typing import List
+import os
 
-from empatia.etl.downloader import get_data
+import json
+import urllib3
+import certifi
+from time import sleep
+
 from empatia.settings import MERRA_DATASET_PATH
-from empatia.settings.constants import MERRA_BASE_URL
+from empatia.settings.constants import MERRA_VERSION
 from empatia.settings.credentials import NASA_TOKEN
 from empatia.settings.log import logger
 
-from bs4 import BeautifulSoup
+
+import requests
+from requests.adapters import HTTPAdapter, Retry
+
+from tqdm import tqdm
+
+def download(file_url, filename, file_path, headers=None):
+    print(f"Downloading {filename} from {file_url} to {file_path}")
+
+    if os.path.exists(file_path):
+        print(f"{file_path} already exists.. skipping")
+        return 
+
+    s = requests.Session()
+    retries = Retry(total=5,
+                    backoff_factor=0.1,
+                    status_forcelist=[ 500, 502, 503, 504 ])
+    s.mount('http://', HTTPAdapter(max_retries=retries))
+
+    max_attempts = 5
+    attempts = 0
+    while attempts < max_attempts:
+        print(f"Downloading {filename}.. try {attempts+1}/{max_attempts}")
+
+        file_response = s.get(file_url, headers=headers, stream=True)
+        if file_response.status_code != 200:
+            print(f"Failed to get response from {file_url}. Status code: {file_response.status_code}")
+            attempts += 1
+            sleep(2)
+            break
+
+        file_size = int(file_response.headers.get('Content-Length', 0))
+        progress = tqdm(file_response.iter_content(1024), f'Downloading {filename}', total=file_size, unit='B', unit_scale=True, unit_divisor=1024)
+        with open(file_path, 'wb') as f:
+            for data in progress.iterable:
+                f.write(data)
+                progress.update(len(data))
+        progress.close()
+            
+        if file_response.status_code == 200:
+            break
+
+    return file_response.status_code
+
+def get_http_data(request):
+    
+    http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',ca_certs=certifi.where())
+    url = 'https://disc.gsfc.nasa.gov/service/subset/jsonwsp'
+
+    headers = {'Content-Type': 'application/json',
+               'Accept'      : 'application/json'}
+
+    try:
+        data = json.dumps(request)
+        r = http.request('POST', url, body=data, headers=headers)
+        response = json.loads(r.data)
+    except urllib3.exceptions.HTTPError as e:
+        print(f"HTTP Error: {e}")
+        raise
+
+    if response['type'] == 'jsonwsp/fault' :
+        print(f'API Error: faulty {response["methodname"]} request')
+
+    return response
+
+def get_merra_product_url(request):
+    """
+    Get MERRA product URL from the NASA API.
+    """
+    response = get_http_data(request)
+    myJobId = response['result']['jobId']
+    
+    if response['type'] == 'jsonwsp/fault':
+        print(f"API Error: {response['fault']['message']}")
+        raise
+
+    # Construct JSON WSP request for API method: GetStatus
+    status_request = {
+        'methodname': 'GetStatus',
+        'version': '1.0',
+        'type': 'jsonwsp/request',
+        'args': {'jobId': myJobId}
+    }
+
+    while response['result']['Status'] in ['Accepted', 'Running']:
+        sleep(5)
+        response = get_http_data(status_request)
+
+    if response['result']['Status'] == 'Succeeded' :
+        logger.info(f"Job {myJobId} completed successfully. {response['result']['message']}")
+    else : 
+        logger.error(f"Job {myJobId} failed with status: {response['result']['Status']}")
+        raise
+
+    result = requests.get(f'https://disc.gsfc.nasa.gov/api/jobs/results/{myJobId}')
+    try:
+        result.raise_for_status()
+        urls = result.text.split('\n')
+        urls = [url for url in urls if not url.strip().endswith('.pdf')]
+    except:
+        logger.error(f'Request returned error code {result.status_code}')
+        raise
+
+    return urls[0]
+
 
 def get_merra_files(
     date_stamp: str,
     base_url: str,
     product: str,
     shortname: str,
-    region: List[str],
+    region: List[float],
     start_hour: str,
     end_hour: str,
     version: str,
@@ -25,52 +132,42 @@ def get_merra_files(
     """
     Download MERRA products
     """
-    ds: dt = dt.strptime(date_stamp, "%Y-%m-%d")
 
-    url = (
-            f"{MERRA_BASE_URL}/data/MERRA2/{shortname}.{version}/"
-            + f"{ds.year}/{ds.month:02d}/"        
-        )
+    try:
+        dst_path = f"{MERRA_DATASET_PATH}/{shortname}/{date_stamp}/"
+        os.makedirs(dst_path, exist_ok=True)
+    except OSError as e:
+        print(f"Error creating directory {dst_path}: {e}")
+        return
 
-    with urllib.request.urlopen(url) as response:
-        html = response.read()
+    logger.info(f"Requesting subset for {shortname} on {date_stamp} from {base_url}")
 
-    soup = BeautifulSoup(html, "html.parser")
-    tags = soup("a")
-    urls: List[str] = []
-    fnames: List[Dict] = []
-    for tag in tags:
-        u = tag.get("href", None)
-        if u.endswith(".nc4") and ds.strftime("%Y%m%d") in u:
-            print(f"Found file: {u}")
-            fnames.append(u.split("/")[-1])
-            urls.append(url + u)
+    data = []
+    for var in variables:
+        data.append({'datasetId': f"{shortname}_{MERRA_VERSION}", 'variable': var})
 
-    #filename = (
-    #    f"/data/MERRA2/{shortname}.{version}"
-    #    f"/{ds.year}/{ds.month:02d}/{product}.{ds.strftime('%Y%m%d')}.nc4"
-    #)
-    #time = (
-    #    f'{ds.strftime("%Y-%m-%d")}T{start_hour}/{ds.strftime("%Y-%m-%d")}T{end_hour}'
-    #)
-    #label = f'{product}.{ds.strftime("%Y%m%d")}.SUB.nc'
+    subset_request = {
+        'methodname': 'subset',
+        'type': 'jsonwsp/request',
+        'version': '1.0',
+        'args': {
+            'role'  : 'subset',
+            'start' : date_stamp + 'T' + start_hour,
+            'end'   : date_stamp + 'T' + end_hour,
+            'box'   : region,
+            'crop'  : True, 
+            'data': data
+        }
+    }
 
-    #params = {
-    #    "FILENAME": filename,
-    #    "FORMAT": "bmM0Lw",
-    #    "BBOX": ",".join(region),
-    #    "TIME": time,
-    #    "LABEL": label,
-    #    "SHORTNAME": shortname,
-    #    "SERVICE": "L34RS_MERRA2",
-    #    "VERSION": "1.02",
-    #    "DATASET_VERSION": version,
-    #    "VARIABLES": ",".join(variables),
-    #}
+    try:
+        url = get_merra_product_url(subset_request)
+    except Exception as e:
+        logger.error(f"Failed to get MERRA product URL: {e}")
+        return
 
-    dst_path = f"{MERRA_DATASET_PATH}/{shortname}/{ds.strftime('%Y-%m-%d')}/"
-
+    logger.info(f"Downloading MERRA2 product: {product}")
     headers = {"Authorization": f"Bearer {NASA_TOKEN}"}
-    for url, filename in zip(urls, fnames):
-        logger.info(f"Downloading MERRA2 product: {filename}")
-        get_data(url, f"{dst_path}{filename}", file_format, headers=headers)
+    download(url, product, f"{dst_path}{product}.nc", headers=headers)
+    logger.info(f"Files downloaded to {dst_path}")
+    return f"{product}.nc"

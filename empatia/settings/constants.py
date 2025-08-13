@@ -69,7 +69,7 @@ MODIS_REGION = {"north": -21.78, "south": -55.05, "east": -53.64, "west": -73.57
 
 MAIAC_PRODUCT = "MCD19A2"
 MAIAC_COLLECTION = 61
-MAIAC_BANDS = {0: "Optical_Depth_047", 5: "AOD_QA"}
+MAIAC_BANDS = {0: "Optical_Depth_047", 1: "Optical_Depth_055", 5: "AOD_QA"}
 
 VIIRS_PRODUCT = "VNP46A1"
 VIIRS_COLLECTION = 5000
@@ -80,18 +80,19 @@ VIIRS_DATE_END = "2024-06-30"
 XML_VIIRS_NAME = "Promedio de Abril, Mayo y Junio  {} de VNP46A1,"
 
 MERRA_VERSION = "5.12.4"
-MERRA_REGION = ["-55.05", "-73.57", "-21.78", "-53.64"]
+#MERRA_REGION = ["-55.05", "-73.57", "-21.78", "-53.64"]
+MERRA_REGION = [ -73.57, -55.05, -53.64, -21.78]
 MERRA_BASE_URL = (
     #"https://goldsmr{version}.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi"
     #"https://data.gesdisc.earthdata.nasa.gov/"
-    "https://goldsmr4.gesdisc.eosdis.nasa.gov/"
+    "https://goldsmr{version}.gesdisc.eosdis.nasa.gov/"
 )
 MERRA_SHORTNAME = "M2I3NVASM"
 
 MERRA_DATASETS = [
     {
         "base_url": MERRA_BASE_URL.format(version=4),
-        "product": "MERRA2_400.tavg1_2d_aer_Nx",
+        "product": "MERRA2.tavg1_2d_aer_Nx",
         "shortname": "M2T1NXAER",
         "region": MERRA_REGION,
         "start_hour": "12:30:00",
@@ -103,7 +104,7 @@ MERRA_DATASETS = [
     },
     {
         "base_url": MERRA_BASE_URL.format(version=4),
-        "product": "MERRA2_400.tavg1_2d_flx_Nx",
+        "product": "MERRA2.tavg1_2d_flx_Nx",
         "shortname": "M2T1NXFLX",
         "region": MERRA_REGION,
         "start_hour": "12:30:00",
@@ -113,7 +114,7 @@ MERRA_DATASETS = [
     },
     {
         "base_url": MERRA_BASE_URL.format(version=4),
-        "product": "MERRA2_400.tavg1_2d_rad_Nx",
+        "product": "MERRA2.tavg1_2d_rad_Nx",
         "shortname": "M2T1NXRAD",
         "region": MERRA_REGION,
         "start_hour": "12:30:00",
@@ -123,7 +124,7 @@ MERRA_DATASETS = [
     },
     {
         "base_url": MERRA_BASE_URL.format(version=5),
-        "product": "MERRA2_400.inst3_3d_asm_Nv",
+        "product": "MERRA2.inst3_3d_asm_Nv",
         "shortname": MERRA_SHORTNAME,
         "region": MERRA_REGION,
         "start_hour": "12:00:00",
@@ -134,10 +135,10 @@ MERRA_DATASETS = [
 ]
 
 XML_MERRA_PRODUCT_NAMES = [
-    "MERRA2_400.tavg1_2d_aer_Nx.{}.SUB.nc: (BCCMASS)",
-    "MERRA2_400.tavg1_2d_flx_Nx.{}.SUB.nc: (PBLH, PRECTOT, SPEED, SPEEDMAX, USTAR)",
-    "MERRA2_400.tavg1_2d_rad_Nx.{}.SUB.nc: (ALBEDO, CLDHGH, CLDLOW)",
-    "MERRA2_400.inst3_3d_asm_Nv.{}.SUB.nc: (PS, RH, T, U, V)",
+    "MERRA2.tavg1_2d_aer_Nx.{}.SUB.nc: (BCCMASS)",
+    "MERRA2.tavg1_2d_flx_Nx.{}.SUB.nc: (PBLH, PRECTOT, SPEED, SPEEDMAX, USTAR)",
+    "MERRA2.tavg1_2d_rad_Nx.{}.SUB.nc: (ALBEDO, CLDHGH, CLDLOW)",
+    "MERRA2.inst3_3d_asm_Nv.{}.SUB.nc: (PS, RH, T, U, V)",
 ]
 
 MIN_PERCENTAGE_OF_VALID_DATA = (

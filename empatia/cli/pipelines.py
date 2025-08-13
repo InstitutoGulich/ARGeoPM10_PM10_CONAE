@@ -215,10 +215,12 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
         PM10 per sensor orbit
         ICA
     """
-    estimator = PM10Estimator.load_model(MODEL_PATH)
     log_file = f"{PROCESSED_DATA_PATH}/log.txt"
+    
+    estimator = PM10Estimator.load_model(MODEL_PATH)
+    logger.info(f"Using..{MODEL_PATH}")
+    
     today = dt.datetime.today()
-
     dates_to_download = (
         get_dates_to_download_for_a_range(start_date, end_date)
         if start_date
@@ -231,7 +233,6 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
     #    viirs_file_path = get_viirs_dataset_path(today.year - 1)
 
     logger.info("Setting domain...")
-    logger.info(f"Using..{MODEL_PATH}")
     set_domain(DOMAIN_DATA_PATH)
     apply_mask_result = apply_mask(REGION_DATA_PATH)
     total_cells = get_total_cells(apply_mask_result)
@@ -261,6 +262,12 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
             modis_outputs = process_modis_data(
                 current_maiac_path, date, processed_dir_path, total_cells
             )
+
+            #import datetime
+            #modis_outputs = [{'file': '/home/msgro/work/empatia/data/processed/2021-06-25/AOD_QA_13_Terra.tif', 'sensor': 'Terra', 'date': datetime.datetime(2021, 6, 25, 13, 30)}, 
+            #{'file': '/home/msgro/work/empatia/data/processed/2021-06-25/AOD_QA_15_Terra.tif', 'sensor': 'Terra', 'date': datetime.datetime(2021, 6, 25, 15, 10)}, 
+            #{'file': '/home/msgro/work/empatia/data/processed/2021-06-25/AOD_QA_17_Aqua.tif', 'sensor': 'Aqua', 'date': datetime.datetime(2021, 6, 25, 17, 45)}]
+
             if not modis_outputs:
                 continue
 
@@ -290,7 +297,7 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
             logger.error(f"Uncompleted process: {e}")
             new_uncompleted_dates.append(date)
 
-        delete_intermediate_files(processed_dir_path)
+        #delete_intermediate_files(processed_dir_path)
 
     update_log_data(dates_to_download, log_file, new_uncompleted_dates)
 
@@ -395,7 +402,8 @@ def computing_pm_10(
         pm10_file_path = (
             f"{PM10_PREFIX_FILENAME}_{min_date.strftime('%Y%m%d_%H%M%S')}_v001"
         )
-        print(f"######## Features Files {features_files}")
+        print(f"Predicting PM10 for {min_date} using {features_files}")
+        features_files = [str(f) for f in features_files if (("SPEEDMAX" not in f))]
         predict(estimator, features_files, f"{processed_dir_path}{pm10_file_path}")
         pm10_file = f"{processed_dir_path}{pm10_file_path}.tif"
         log_prediction[sensor].append(pm10_file)
@@ -460,12 +468,13 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
         shortname = dataset.get("shortname", "")
         product = dataset.get("product", "")
         variables = dataset.get("variables", [])
-        get_merra_files(date, **dataset)  # type: ignore
+        merra_filename = get_merra_files(date, **dataset)  # type: ignore
         # Import to GRASS to reproject and rescale
         for modis_orbit, var in itertools.product(modis_outputs, variables):
             _, sensor, min_date = modis_orbit.values()
             current_merra_path = (
-                f"NETCDF:{MERRA_DATASET_PATH}/{shortname}/" f"{date}/{product}.nc:{var}"
+                f"NETCDF:{MERRA_DATASET_PATH}/{shortname}/" f"{date}/{merra_filename}:{var}"
+                #f"NETCDF:{MERRA_DATASET_PATH}/{shortname}/" f"{date}/{product}.nc:{var}"
             )
             # merra_band = (int(min_date.hour) % 12) + 1
             merra_band = int(min_date.hour) + 1
@@ -481,7 +490,7 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
                 os.remove(f"{MERRA_DATASET_PATH}/{shortname}/{date}/{product}.nc")
                 get_merra_files(date, **dataset)  # type: ignore
                 import_netcdf(current_merra_path, merra_band, rname)
-
+            
             get_resampling(rname)
             apply_mask(REGION_DATA_PATH)
             refresh_region()
@@ -534,6 +543,7 @@ def process_modis_data(
 
             logger.info(f"The current file {rname} will be processed")
             rofile = f"{processed_dir_path}{rname}"
+            
             raster2gtiff(rname, rofile)
 
         for modis_orbit in orbits_to_clean:

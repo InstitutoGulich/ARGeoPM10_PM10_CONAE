@@ -10,7 +10,7 @@ from empatia.settings import GISBASE, GISDB, LOCATION, MAPSET
 from empatia.settings.constants import CELL_NULL_VALUE, MIN_PERCENTAGE_OF_VALID_DATA
 from empatia.settings.log import logger
 
-_ = gsetup.init(GISBASE, GISDB, LOCATION, MAPSET)
+_ = gsetup.init(GISDB, LOCATION, MAPSET)
 
 
 def clean_db() -> None:

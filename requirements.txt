@@ -8,4 +8,5 @@ rasterio==1.2.0
 requests==2.25.1
 scikit-learn==0.24.1
 tqdm==4.56.0
+beautifulsoup4==4.13.4
 -e .

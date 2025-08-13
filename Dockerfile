@@ -1,4 +1,3 @@
-#FROM python:3.8.2-slim-buster 
 FROM python:3.8.20-slim-bullseye
 
 ARG GDAL_VERSION=3.0.4
@@ -76,7 +75,7 @@ ARG BUIILD_PACKAGES="vim bzip2 unzip make gcc g++ git libglib2.0-0 libsm6 libxre
 
 RUN apt-get update && \
     apt-get install -y $BUIILD_PACKAGES && \
-    apt-get install -y grass=76 grass-doc && \
+    apt-get install -y grass grass-doc && \
     rm -rf /var/lib/apt/lists/*
 
 ADD setup.py setup.py
@@ -91,6 +90,7 @@ WORKDIR /code
 
 RUN grass --text -c EPSG:4326 grass_data/LatLon/
 
-ENV PYTHONPATH=/code
+ENV PYTHONPATH=/code:/usr/lib/grass78/etc/python/
+
 
 ENTRYPOINT ["/code/docker_entrypoint.sh"]

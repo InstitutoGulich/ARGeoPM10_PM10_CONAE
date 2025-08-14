@@ -72,18 +72,18 @@ $ touch .git/hooks/pre-push;echo "pytest" > .git/hooks/pre-push; chmod a+x .git/
 
 - Build image
 ```
-$ ./commands/build_docker_image.sh --tag <tag_name>
+$ docker build -t empatia:<tag_name> -f Dockerfile .
 ```
 
 - Create and run container
 ```
-$ docker run --name <container_name> --env-file .env -it empatia:<tag_name> /bin/bash
+$ docker run --name <container_name> --env-file .env -d -v $PWD/data:/code/data empatia:<tag_name>
 ```
 
 - Create and run container defining new environment variables
 ```
 echo "MIN_PERCENTAGE_OF_VALID_DATA=8.0" >> .env
-$ docker run --name <container_name> --env-file .env -it empatia:<tag_name> /bin/bash
+$ docker run --name <container_name> --env-file .env -d -v $PWD/data:/code/data empatia:<tag_name>
 ```
 
 - Run container

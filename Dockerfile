@@ -62,13 +62,16 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/share/gdal /usr/share/gdal
 COPY --from=builder /usr/local/lib/libgdal* /usr/local/lib/
 
-ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ENV GDAL_DATA=/usr/share/gdal/
 ENV PYTHONPATH=/code:/usr/lib/grass78/etc/python/
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib/grass78/lib
 
 # Copy project code
-COPY . /code
+COPY empatia /code/empatia
+COPY setup.py requirements.txt /code/
 WORKDIR /code
+
+RUN pip install -e .
 
 # Optionally, initialize GRASS data (skip if not needed at build time)
 RUN grass --text -c EPSG:4326 grass_data/LatLon/

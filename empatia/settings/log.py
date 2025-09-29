@@ -16,18 +16,25 @@ LOCAL_LOG_PATH = Path(LOCAL_LOG_DIR) / LOG_FILENAME
 if not os.path.exists(LOCAL_LOG_DIR):
     os.makedirs(LOCAL_LOG_DIR)
 
-
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": True,  # disable third party libraries
     "formatters": {
         "standard": {
-            "format": "😊 - %(levelname)s %(processName)s(pid=%(process)d) - "
-            "%(module)s - %(message)s"
+            "format": "🟢 - %(levelname)s %(processName)s(pid=%(process)d) - "
+            "%(module)s:%(lineno)d - %(message)s"
         },
         "verbose": {
-            "format": "🧐 - %(levelname)s %(processName)s(pid=%(process)d) - "
-            "%(module)s - %(message)s"
+            "format": "🟢 - %(levelname)s %(processName)s(pid=%(process)d) - "
+            "%(filename)s:%(lineno)d - %(funcName)s() - %(message)s"
+        },
+        "warning": {
+            "format": "🟡 - %(levelname)s %(processName)s(pid=%(process)d) - "
+            "%(module)s:%(lineno)d - %(message)s"
+        },
+        "error": {
+            "format": "🔴 - %(levelname)s %(processName)s(pid=%(process)d) - "
+            "%(module)s:%(lineno)d - %(message)s"
         },
     },
     "handlers": {

@@ -110,7 +110,7 @@ MERRA_DATASETS = [
         "start_hour": "12:30:00",
         "end_hour": "20:30:59",
         "version": MERRA_VERSION,
-        "variables": ["PBLH", "PRECTOT", "SPEED", "SPEEDMAX", "USTAR"],
+        "variables": ["PBLH", "PRECTOT", "SPEED", "USTAR"],
     },
     {
         "base_url": MERRA_BASE_URL.format(version=4),

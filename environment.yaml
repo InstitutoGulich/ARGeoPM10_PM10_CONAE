@@ -4,7 +4,7 @@ channels:
   - defaults
 dependencies:
   - python=3.9
-  - scikit-learn=0.24.1
+  - scikit-learn
   - conda-forge::bs4
   - conda-forge::optuna
   - gdal

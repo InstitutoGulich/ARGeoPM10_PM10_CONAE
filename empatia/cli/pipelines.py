@@ -244,9 +244,10 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
         processed_dir_path = f"{PROCESSED_DATA_PATH}/{date}/"
 
         logger.info("Get VIIRS data")
-        viirs_file_path = get_viirs_dataset_path(2022)
+        date_dt = dt.datetime.strptime(date, "%Y-%m-%d")
+        viirs_file_path = get_viirs_dataset_path(date_dt.year - 1)
         if not os.path.exists(viirs_file_path):
-            viirs_file_path = get_viirs_dataset_path(date.year - 1)
+            viirs_file_path = get_viirs_dataset_path(2022)
         logger.info(f"Using {viirs_file_path}...")
 
         try:
@@ -262,11 +263,6 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
             modis_outputs = process_modis_data(
                 current_maiac_path, date, processed_dir_path, total_cells
             )
-
-            #import datetime
-            #modis_outputs = [{'file': '/home/msgro/work/empatia/data/processed/2021-06-25/AOD_QA_13_Terra.tif', 'sensor': 'Terra', 'date': datetime.datetime(2021, 6, 25, 13, 30)}, 
-            #{'file': '/home/msgro/work/empatia/data/processed/2021-06-25/AOD_QA_15_Terra.tif', 'sensor': 'Terra', 'date': datetime.datetime(2021, 6, 25, 15, 10)}, 
-            #{'file': '/home/msgro/work/empatia/data/processed/2021-06-25/AOD_QA_17_Aqua.tif', 'sensor': 'Aqua', 'date': datetime.datetime(2021, 6, 25, 17, 45)}]
 
             if not modis_outputs:
                 continue
@@ -398,12 +394,12 @@ def computing_pm_10(
         features_files.pop(1)  # remove AOD_QA
         features_files.insert(4, str(DOMAIN_DATA_PATH))
         features_files.append(str(viirs_file_path))
+        #features_files = [str(f) for f in features_files if (("SPEEDMAX" not in f))]
         # Predict PM10
         pm10_file_path = (
             f"{PM10_PREFIX_FILENAME}_{min_date.strftime('%Y%m%d_%H%M%S')}_v001"
         )
         print(f"Predicting PM10 for {min_date} using {features_files}")
-        features_files = [str(f) for f in features_files if (("SPEEDMAX" not in f))]
         predict(estimator, features_files, f"{processed_dir_path}{pm10_file_path}")
         pm10_file = f"{processed_dir_path}{pm10_file_path}.tif"
         log_prediction[sensor].append(pm10_file)

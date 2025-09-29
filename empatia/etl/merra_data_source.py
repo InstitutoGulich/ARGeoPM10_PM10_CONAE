@@ -18,11 +18,10 @@ from requests.adapters import HTTPAdapter, Retry
 from tqdm import tqdm
 
 def download(file_url, filename, file_path, headers=None):
-    print(f"Downloading {filename} from {file_url} to {file_path}")
-
+    
     if os.path.exists(file_path):
-        print(f"{file_path} already exists.. skipping")
-        return 
+        logger.info(f"{file_path} already exists.. skipping")
+        return
 
     s = requests.Session()
     retries = Retry(total=5,
@@ -33,11 +32,12 @@ def download(file_url, filename, file_path, headers=None):
     max_attempts = 5
     attempts = 0
     while attempts < max_attempts:
-        print(f"Downloading {filename}.. try {attempts+1}/{max_attempts}")
+        logger.info(f"Downloading {filename}.. try {attempts+1}/{max_attempts}")
+        logger.info(f"Requesting {file_url}")
 
         file_response = s.get(file_url, headers=headers, stream=True)
         if file_response.status_code != 200:
-            print(f"Failed to get response from {file_url}. Status code: {file_response.status_code}")
+            logger.error(f"Failed to get response from {file_url}. Status code: {file_response.status_code}")
             attempts += 1
             sleep(2)
             break
@@ -84,7 +84,7 @@ def get_merra_product_url(request):
     myJobId = response['result']['jobId']
     
     if response['type'] == 'jsonwsp/fault':
-        print(f"API Error: {response['fault']['message']}")
+        logger.error(f"API Error: {response['fault']['message']}")
         raise
 
     # Construct JSON WSP request for API method: GetStatus
@@ -113,6 +113,10 @@ def get_merra_product_url(request):
     except:
         logger.error(f'Request returned error code {result.status_code}')
         raise
+
+    if not urls:
+        logger.error(f"No valid URLs found for job {myJobId}")
+        raise ValueError(f"No valid URLs found for job {myJobId}")
 
     return urls[0]
 

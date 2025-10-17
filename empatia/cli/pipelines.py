@@ -250,14 +250,14 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
             viirs_file_path = get_viirs_dataset_path(2022)
         logger.info(f"Using {viirs_file_path}...")
 
+        if not os.path.exists(processed_dir_path):
+            os.mkdir(processed_dir_path)
+
+        prediction_dir_path = f"{PREDICTION_DATA_PATH}/{date}/"
+        if not os.path.exists(prediction_dir_path):
+            os.mkdir(prediction_dir_path)
+
         try:
-            if not os.path.exists(processed_dir_path):
-                os.mkdir(processed_dir_path)
-
-            prediction_dir_path = f"{PREDICTION_DATA_PATH}/{date}/"
-            if not os.path.exists(prediction_dir_path):
-                os.mkdir(prediction_dir_path)
-
             logger.info("Downloading MAIAC data...")
             current_maiac_path = f"{MODIS_DATASET_PATH}/{MAIAC_PRODUCT}/{date}/"
             modis_outputs = process_modis_data(
@@ -266,10 +266,20 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
 
             if not modis_outputs:
                 continue
+        except Exception as e:
+            logger.error(f"Not found MAIAC for {date}: {e}")
+            new_uncompleted_dates.append(date)
+            continue
 
+        try:
             logger.info("Downloading MERRA data...")
             process_merra_data(date, modis_outputs, processed_dir_path)
+        except Exception as e:
+            logger.error(f"Not found MERRA for {date}: {e}")
+            new_uncompleted_dates.append(date)
+            continue
 
+        try:
             logger.info("Computing PM10...")
             creation_date, log_prediction, min_date = computing_pm_10(
                 current_maiac_path,
@@ -279,7 +289,12 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
                 processed_dir_path,
                 viirs_file_path,
             )
+        except Exception as e:
+            logger.error(f"Uncompleted PM10 process: {e}")
+            new_uncompleted_dates.append(date)
+            continue
 
+        try:
             logger.info("Computing ICA...")
             computing_ica(
                 creation_date,
@@ -288,10 +303,10 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
                 prediction_dir_path,
                 processed_dir_path,
             )
-
         except Exception as e:
-            logger.error(f"Uncompleted process: {e}")
+            logger.error(f"Uncompleted ICA process: {e}")
             new_uncompleted_dates.append(date)
+            continue
 
         #delete_intermediate_files(processed_dir_path)
 

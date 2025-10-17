@@ -21,6 +21,7 @@ def extract_modis_date(modis_date: str) -> Tuple[dt, str]:
         Date and sensor type (T: Terra, A: Aqua)
     """
     sensor = ""
+    date = ""
     if "T" in modis_date:
         date = modis_date.replace("T", "")
         sensor = "Terra"
@@ -179,6 +180,8 @@ def modis_hdf_2_tiff(
 
     # read into numpy array
     band_array = band_ds.ReadAsArray().astype(np.int16)
+    if len(band_array.shape) == 2:
+        band_array = np.expand_dims(band_array, axis=0) # single band case
 
     # convert no_data values
     band_array[band_array == CELL_NULL_VALUE] = non_value

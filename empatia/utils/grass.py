@@ -122,7 +122,7 @@ def get_resampling(rinput: str) -> None:
     Args:
         rinput: raster map name
     """
-    logger.info("Set resampling...")
+    logger.debug("Set resampling...")
     grass.run_command(
         "r.resamp.interp",
         input=rinput,
@@ -137,7 +137,7 @@ def refresh_region() -> None:
     """
     Refresh region
     """
-    logger.info("Refresh region...")
+    logger.debug("Refresh region...")
     grass.run_command("g.region", raster="domain", overwrite=True, quiet=True)
 
 
@@ -147,13 +147,13 @@ def apply_mask(raster_dir: Union[str, Path]) -> Any:
     Args:
         raster_dir: vector dir path
     """
-    logger.info("Applying mask...")
+    logger.debug("Applying mask...")
     grass.run_command(
         "v.in.ogr", input=raster_dir, output="mask", flags="o", overwrite=True, quiet=True
     )
 
     grass.run_command("r.mask", vect="mask", overwrite="True", quiet=True)
-    region_data = grass.parse_command("g.region", flags="p")
+    region_data = grass.parse_command("g.region", flags="p", quiet=True)
     return json.loads(json.dumps(region_data))
 
 
@@ -164,13 +164,13 @@ def get_number_of_null_values(raster_name: str) -> int:
 
     n_of_null_values = 0
     for key in stats_data.keys():
-        logger.info(f"Current key: {key}")
+        logger.debug(f"Current key: {key}")
         if key.startswith(str(CELL_NULL_VALUE)):
             n_of_null_values = int(key.split(" ")[1])
             break
 
-    logger.info(f"RNAME: {raster_name}")
-    logger.info(f"NULLS: {n_of_null_values}")
+    logger.debug(f"RNAME: {raster_name}")
+    logger.debug(f"NULLS: {n_of_null_values}")
     return n_of_null_values
 
 
@@ -188,7 +188,7 @@ def import_gtiff(rfile: Union[str, Path], name: str) -> None:
         rfile: raster file name
         name: raster map name
     """
-    logger.info("Importing to gtiff...")
+    logger.debug("Importing to gtiff...")
     grass.run_command("r.in.gdal", input=rfile, output=name, flags="o", overwrite=True, quiet=True)
 
 
@@ -200,7 +200,7 @@ def import_netcdf(rfile: Union[str, Path], band: int, name: str) -> None:
         band: data index
         name: raster map name
     """
-    logger.info("Importing netcdf...")
+    logger.debug("Importing netcdf...")
     grass.run_command(
         "r.in.gdal", input=rfile, output=name, flags="o", band=band, overwrite=True, quiet=True
     )
@@ -307,9 +307,9 @@ def reset_color_table(rinput: str, rules: Union[str, Path]) -> None:
 def enough_valid_data_has_been_collected(
     total_cells: int, number_of_null_cells: int
 ) -> bool:
-    logger.info("Define if minimum amount of valid data has been collected...")
+    logger.debug("Define if minimum amount of valid data has been collected...")
     percent_of_null_cells = number_of_null_cells * 100 / total_cells
-    logger.info(f"Percent of nulls cells: {percent_of_null_cells}")
+    logger.debug(f"Percent of nulls cells: {percent_of_null_cells}")
     percent_of_valid_cells = 100 - percent_of_null_cells
-    logger.info(f"Percent of valid cells: {percent_of_valid_cells}")
+    logger.debug(f"Percent of valid cells: {percent_of_valid_cells}")
     return percent_of_valid_cells >= MIN_PERCENTAGE_OF_VALID_DATA

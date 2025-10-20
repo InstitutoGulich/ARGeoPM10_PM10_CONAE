@@ -21,19 +21,19 @@ LOGGING = {
     "disable_existing_loggers": True,  # disable third party libraries
     "formatters": {
         "standard": {
-            "format": "🟢 - %(levelname)s %(processName)s(pid=%(process)d) - "
+            "format": "🟢 - %(levelname)s - "
             "%(module)s:%(lineno)d - %(message)s"
         },
         "verbose": {
-            "format": "🟢 - %(levelname)s %(processName)s(pid=%(process)d) - "
+            "format": "🟢 - %(levelname)s - "
             "%(filename)s:%(lineno)d - %(funcName)s() - %(message)s"
         },
         "warning": {
-            "format": "🟡 - %(levelname)s %(processName)s(pid=%(process)d) - "
+            "format": "🟡 - %(levelname)s - "
             "%(module)s:%(lineno)d - %(message)s"
         },
         "error": {
-            "format": "🔴 - %(levelname)s %(processName)s(pid=%(process)d) - "
+            "format": "🔴 - %(levelname)s - "
             "%(module)s:%(lineno)d - %(message)s"
         },
     },

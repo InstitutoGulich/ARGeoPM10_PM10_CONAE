@@ -240,7 +240,9 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
     logger.info("Processing...")
     new_uncompleted_dates = []
     for date in dates_to_download:
-        logger.info(f"Date: {date}")
+        logger.info("===================================")
+        logger.info(f"Starting date: {date}")
+        logger.info("===================================")
         processed_dir_path = f"{PROCESSED_DATA_PATH}/{date}/"
 
         logger.info("Get VIIRS data")
@@ -265,6 +267,7 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
             )
 
             if not modis_outputs:
+                logger.info(f"Not found valid MODIS data for {date}")
                 continue
         except Exception as e:
             logger.error(f"Not found MAIAC for {date}: {e}")

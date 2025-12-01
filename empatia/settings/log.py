@@ -70,6 +70,11 @@ LOGGING = {
             "level": "WARNING",
             "formatter": "warning",
         },
+        "console_critical": {
+            "class": "logging.StreamHandler",
+            "level": "CRITICAL",
+            "formatter": "error",
+        },
         "file_debug": {
             "class": "logging.FileHandler",
             "level": "DEBUG",
@@ -87,7 +92,7 @@ LOGGING = {
     },
     "loggers": {
         "empatia": {
-            "handlers": ["console_info", "console_warning", "file_debug", "file_error"],
+            "handlers": ["console_info", "console_warning", "console_critical", "file_debug", "file_error"],
             "level": "DEBUG",
             "propagate": False,
         }
@@ -103,6 +108,7 @@ logger = logging.getLogger("empatia")
 debug_filter = LevelFilter(logging.DEBUG, only=True)
 info_filter = LevelFilter(logging.INFO, only=True)
 warning_filter = LevelFilter(logging.WARNING, only=True)
+critical_filter = LevelFilter(logging.CRITICAL, only=True)
 error_filter = LevelFilter(logging.ERROR, only=True)
 
 for h in logger.handlers:
@@ -120,6 +126,8 @@ for h in logger.handlers:
         h.addFilter(info_filter)
     elif isinstance(h, logging.StreamHandler) and lvl == logging.WARNING:
         h.addFilter(warning_filter)
+    elif isinstance(h, logging.StreamHandler) and lvl == logging.CRITICAL:
+        h.addFilter(critical_filter)
 
 
 def timed(func: Any) -> Any:

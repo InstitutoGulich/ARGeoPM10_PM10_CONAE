@@ -522,6 +522,7 @@ def process_modis_data(
         **MODIS_REGION,  # type: ignore
     ):
         return []
+    logger.info("Processing MAIAC data...")
     null_files = []  # type: ignore
     modis_outputs = []  # type: ignore
     for band, prefix in MAIAC_BANDS.items():

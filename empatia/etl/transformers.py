@@ -10,7 +10,7 @@ from rasterio.merge import merge
 from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 from empatia.settings.constants import CELL_NULL_VALUE
-
+from empatia.settings.log import logger
 
 def extract_modis_date(modis_date: str) -> Tuple[dt, str]:
     """
@@ -169,6 +169,11 @@ def modis_hdf_2_tiff(
             f"Subset {subset} not found in {infile}. "
             "Check the available subdatasets in the HDF file."
         )
+    except Exception as e:
+        logger.critical(f"Error opening {infile}: {e}")
+        raise RuntimeError(f"Error opening {infile}: {e}")
+    
+    logger.info(f"Processing MODIS file: {infile}")
 
     # read metadata
     metadata = band_ds.GetMetadata_Dict()
@@ -190,6 +195,7 @@ def modis_hdf_2_tiff(
     bands = []
     for e, orbit in enumerate(orbits):
         date, sensor = extract_modis_date(orbit)
+        logger.info(f"Processing orbit {orbit} for tile {tile}...")
         orbit_outfile = f"{outdir}{prefix_outfile}_{date.hour}_{sensor}_{tile}.tif"
         out_ds = gdal.GetDriverByName("GTiff").Create(
             orbit_outfile,
@@ -199,15 +205,18 @@ def modis_hdf_2_tiff(
             gdal.GDT_Int16,
             ["COMPRESS=LZW", "TILED=YES"],
         )
+        logger.info(f"Writing file {orbit_outfile}... {band_array.shape}")
         out_ds.SetGeoTransform(band_ds.GetGeoTransform())
         out_ds.SetProjection(band_ds.GetProjection())
         out_ds.GetRasterBand(1).WriteArray(band_array[e])
         out_ds.GetRasterBand(1).SetNoDataValue(non_value)
+        logger.info(f"File {orbit_outfile} written successfully.")
 
         out_ds = None  # close dataset to write to disc
         reproject_tiff(orbit_outfile, orbit_outfile)
         bands.append((date, sensor, tile))
 
+    logger.info(f"Total orbits for band {subset}: {len(bands)}")
     return bands
 
 
@@ -222,6 +231,7 @@ def get_modis_mosaic(indir: str, band: int, prefix: str, outdir: str = "") -> Li
     Return
         List of generated mosaic metadata
     """
+    logger.info(f"Processing MODIS band {band}...")
     if outdir == "":
         outdir = indir
 
@@ -229,8 +239,9 @@ def get_modis_mosaic(indir: str, band: int, prefix: str, outdir: str = "") -> Li
     bands = []
     for rfile in rfiles:
         bands.extend(modis_hdf_2_tiff(rfile, band, prefix, indir))
-
+    logger.info(f"Total tiles for band {band}: {len(bands)}")
     orbit_groups = groupby_sensor_by_orbit(bands)
+    logger.info(f"Total orbits for band {band}: {len(orbit_groups)}")
 
     # generate mosaics
     mosaic_files = []

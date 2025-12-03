@@ -33,7 +33,7 @@ def download(file_url, filename, file_path, headers=None):
     attempts = 0
     while attempts < max_attempts:
         logger.info(f"Downloading {filename}.. try {attempts+1}/{max_attempts}")
-        logger.info(f"Requesting {file_url}")
+        logger.debug(f"Requesting {file_url}")
 
         file_response = s.get(file_url, headers=headers, stream=True)
         if file_response.status_code != 200:

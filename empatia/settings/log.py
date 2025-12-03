@@ -70,6 +70,11 @@ LOGGING = {
             "level": "WARNING",
             "formatter": "warning",
         },
+        "console_error": {
+            "class": "logging.StreamHandler",
+            "level": "ERROR",
+            "formatter": "error",
+        },
         "console_critical": {
             "class": "logging.StreamHandler",
             "level": "CRITICAL",
@@ -92,7 +97,7 @@ LOGGING = {
     },
     "loggers": {
         "empatia": {
-            "handlers": ["console_info", "console_warning", "console_critical", "file_debug", "file_error"],
+            "handlers": ["console_info", "console_warning", "console_critical", "console_error", "file_debug", "file_error"],
             "level": "DEBUG",
             "propagate": False,
         }

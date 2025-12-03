@@ -138,7 +138,7 @@ def viirs_etl() -> None:
             import_gtiff(f"{output_dir}{outname}.tif", outname)
             viirs_rasters.append(outname)
         except Exception as e:
-            logger.error(f"Not found VIIRS for {ds}: {e}")
+            logger.critical(f"Not found VIIRS for {ds}: {e}")
             uncompleted_dates.append(ds)
 
     logger.info("Computing VIIRS average...")
@@ -149,7 +149,7 @@ def viirs_etl() -> None:
         raster2gtiff(raster_name, f"{output_dir}{raster_name}")
         log_data = {"status": "OK", "uncompleted_dates": uncompleted_dates}
     except Exception as e:
-        logger.error(f"Uncompleted VIIRS update: {e}")
+        logger.critical(f"Uncompleted VIIRS update: {e}")
         log_data = {"status": "FAIL", "uncompleted_dates": uncompleted_dates}
 
     with open(log_file, "w") as outfile:
@@ -248,6 +248,7 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
         logger.info("Get VIIRS data")
         date_dt = dt.datetime.strptime(date, "%Y-%m-%d")
         viirs_file_path = get_viirs_dataset_path(date_dt.year - 1)
+        viirs_file_path = get_viirs_dataset_path(2021)
         if not os.path.exists(viirs_file_path):
             viirs_file_path = get_viirs_dataset_path(2022)
         logger.info(f"Using {viirs_file_path}...")
@@ -535,7 +536,7 @@ def process_modis_data(
         for modis_orbit in modis_outputs:
             rfile, sensor, min_date = modis_orbit.values()
             sufix = f"{min_date.hour}_{sensor}"
-            logger.info(f"Current sufix: {sufix}")
+            logger.debug(f"Current sufix: {sufix}")
             rname = f"{prefix}_{sufix}"
             import_gtiff(rfile, rname)
             refresh_region()
@@ -545,18 +546,18 @@ def process_modis_data(
                 f"{MIN_PERCENTAGE_OF_VALID_DATA}% floor of non-null cells was not reached"
             )
             if sufix in null_files:
-                logger.info(error_message_in_mosaic)
+                logger.debug(error_message_in_mosaic)
                 orbits_to_clean.append(modis_orbit)
                 continue
 
             null_values = get_number_of_null_values(rname)
             if not enough_valid_data_has_been_collected(total_cells, null_values):
                 null_files.append(sufix)
-                logger.info(error_message_in_mosaic)
+                logger.debug(error_message_in_mosaic)
                 orbits_to_clean.append(modis_orbit)
                 continue
 
-            logger.info(f"The current file {rname} will be processed")
+            logger.debug(f"The current file {rname} will be processed")
             rofile = f"{processed_dir_path}{rname}"
             
             raster2gtiff(rname, rofile)
@@ -603,7 +604,7 @@ def get_dates_to_download(log_file: str, today: dt.datetime) -> List[str]:
 def get_total_cells(result: Dict) -> int:
     cells_data = [k for k in result if k.startswith("cells")][0]
     total_cells = int(cells_data.replace(" ", "")[6:])
-    logger.info(f"Total cells in Argentina: {total_cells}")
+    logger.debug(f"Total cells in Argentina: {total_cells}")
     return total_cells
 
 

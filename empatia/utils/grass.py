@@ -253,6 +253,7 @@ def get_count(rasters: List, name: str) -> None:
         method="count",
         output=name,
         overwrite=True,
+        quiet=True
     )
 
 

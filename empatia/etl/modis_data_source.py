@@ -119,7 +119,7 @@ def get_modis_files(
         product, collection, north, south, east, west, start_date, end_date
     )
     if not fnames:
-        logger.info(f"NO files found out for the dates: {start_date}-{end_date}")
+        logger.warning(f"NO files found out for the dates: {start_date}-{end_date}")
         return False
     logger.info(f"Downloading MODIS's files for: {product}")
     for fn, url in zip(fnames, urls):

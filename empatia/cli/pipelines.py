@@ -98,7 +98,7 @@ def viirs_etl() -> None:
     log_file = f"{output_dir}log.txt"
 
     if today <= date_end:
-        logger.info("Unable to update VIIRS data yet")
+        logger.warning("Unable to update VIIRS data yet")
         return None
 
     if not os.path.exists(output_dir):
@@ -268,7 +268,7 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
             )
 
             if not modis_outputs:
-                logger.info(f"Not found valid MODIS data for {date}")
+                logger.warning(f"Not found valid MODIS data for {date}")
                 continue
         except Exception as e:
             logger.error(f"Not found MAIAC for {date}: {e}")
@@ -472,7 +472,8 @@ def computing_pm_10(
         # Export PNG
         raster2png(pm10_band_name, f"{pm10_dir}{pm10_file_path}")
         # Remove aux.xml temporary files
-        remove_file(f"{pm10_dir}/{pm10_file_path}.aux.xml")
+        if os.path.exists(f"{pm10_dir}/{pm10_file_path}.aux.xml"):
+            remove_file(f"{pm10_dir}/{pm10_file_path}.aux.xml")
         # Zip directory with all product
         zip_directory(pm10_dir, pm10_dir)
     return creation_date, log_prediction, min_date
@@ -641,7 +642,7 @@ def monthly_pipeline(ndays: int) -> None:
                     daily_preds[key].extend(log_data[key])
 
     if len(daily_preds) == 0:
-        logger.info(f"Data not found for {year}-{month}")
+        logger.warning(f"Data not found for {year}-{month}")
         return None
 
     for sensor in SENSORS:

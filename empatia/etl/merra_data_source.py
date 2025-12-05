@@ -85,7 +85,7 @@ def get_merra_product_url(request):
     
     if response['type'] == 'jsonwsp/fault':
         logger.error(f"API Error: {response['fault']['message']}")
-        raise
+        raise Exception(f"API Error: {response['fault']['message']}")
 
     # Construct JSON WSP request for API method: GetStatus
     status_request = {
@@ -97,13 +97,14 @@ def get_merra_product_url(request):
 
     while response['result']['Status'] in ['Accepted', 'Running']:
         sleep(5)
+        logger.info(f"Job {myJobId} is {response['result']['Status']}. Waiting for completion...")
         response = get_http_data(status_request)
 
     if response['result']['Status'] == 'Succeeded' :
         logger.info(f"Job {myJobId} completed successfully. {response['result']['message']}")
     else : 
         logger.error(f"Job {myJobId} failed with status: {response['result']['Status']}")
-        raise
+        raise Exception(f"Job {myJobId} failed with status: {response['result']['Status']}")
 
     result = requests.get(f'https://disc.gsfc.nasa.gov/api/jobs/results/{myJobId}')
     try:
@@ -112,7 +113,7 @@ def get_merra_product_url(request):
         urls = [url for url in urls if not url.strip().endswith('.pdf')]
     except:
         logger.error(f'Request returned error code {result.status_code}')
-        raise
+        raise Exception(f'Request returned error code {result.status_code}')
 
     if not urls:
         logger.error(f"No valid URLs found for job {myJobId}")

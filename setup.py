@@ -10,13 +10,19 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "Click",
-        "modapsclient",
+        "click",
         "numpy",
         "pandas",
+        "pyspatialml",
+        "rasterio",
         "requests",
+        "urllib3",
+        "certifi",
+        "attrs",
+        "beautifulsoup4",
         "scikit-learn",
         "tqdm",
+        # Note: GDAL/GRASS are provided by system packages or conda
     ],
     entry_points="""
         [console_scripts]

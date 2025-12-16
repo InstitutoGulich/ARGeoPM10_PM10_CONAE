@@ -391,7 +391,8 @@ def computing_ica(
     # Remove aux.xml temporary files
     remove_file(f"{ica_dir}/{ica_file}.aux.xml")
     # Zip directory with all product
-    zip_directory(ica_dir, ica_dir)
+    logger.info(f"Writing {prediction_dir_path}/{ica_file}.zip")
+    zip_directory(ica_dir,f'{prediction_dir_path}/{ica_file}.zip')
     with open(f"{prediction_dir_path}/log.txt", "w") as outfile:
         json.dump(log_prediction, outfile, indent=4)
 
@@ -475,7 +476,8 @@ def computing_pm_10(
         if os.path.exists(f"{pm10_dir}/{pm10_file_path}.aux.xml"):
             remove_file(f"{pm10_dir}/{pm10_file_path}.aux.xml")
         # Zip directory with all product
-        zip_directory(pm10_dir, pm10_dir)
+        logger.info(f"Writing {prediction_dir_path}/{pm10_file_path}.zip")
+        zip_directory(pm10_dir,f'{prediction_dir_path}/{pm10_file_path}.zip')
     return creation_date, log_prediction, min_date
 
 

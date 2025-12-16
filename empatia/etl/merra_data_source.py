@@ -68,11 +68,12 @@ def get_http_data(request):
         r = http.request('POST', url, body=data, headers=headers)
         response = json.loads(r.data)
     except urllib3.exceptions.HTTPError as e:
-        print(f"HTTP Error: {e}")
-        raise
+        logger.error(f"HTTP Error: {e}")
+        raise Exception(f"HTTP Error: {e}")
 
     if response['type'] == 'jsonwsp/fault' :
-        print(f'API Error: faulty {response["methodname"]} request')
+        logger.error(f'API Error: faulty {response["methodname"]} request')
+        raise Exception(f'API Error: faulty {response["methodname"]} request')
 
     return response
 
@@ -142,7 +143,7 @@ def get_merra_files(
         dst_path = f"{MERRA_DATASET_PATH}/{shortname}/{date_stamp}/"
         os.makedirs(dst_path, exist_ok=True)
     except OSError as e:
-        print(f"Error creating directory {dst_path}: {e}")
+        logger.error(f"Error creating directory {dst_path}: {e}")
         return
 
     logger.info(f"Requesting subset for {shortname} on {date_stamp} from {base_url}")

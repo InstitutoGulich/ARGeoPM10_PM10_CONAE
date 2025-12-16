@@ -12,6 +12,8 @@ from rasterio.warp import Resampling, calculate_default_transform, reproject
 from empatia.settings.constants import CELL_NULL_VALUE
 from empatia.settings.log import logger
 
+gdal.UseExceptions()
+
 def extract_modis_date(modis_date: str) -> Tuple[dt, str]:
     """
     Get sensor and date from modis format

@@ -38,10 +38,7 @@ def get_modis_urls(
     try:
         """
         # check product
-        print('aka')
         prods = mclient.listProducts()
-        print("---",prods.keys())
-        print(product)
         if not (product in prods.keys()):
             raise ValueError("Invalid product")
 

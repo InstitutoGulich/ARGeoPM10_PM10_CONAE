@@ -166,6 +166,11 @@ def get_merra_files(
         }
     }
 
+    FORCE_DOWNLOAD = False
+    if os.path.exists(f"{dst_path}{product}.nc") and not FORCE_DOWNLOAD:
+        logger.info(f"{dst_path}{product}.nc already exists.. skipping download")
+        return f"{product}.nc"
+
     try:
         url = get_merra_product_url(subset_request)
     except Exception as e:

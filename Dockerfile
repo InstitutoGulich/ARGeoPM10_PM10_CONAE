@@ -1,5 +1,5 @@
 # ---- Builder Stage ----
-FROM python:3.12-slim-bullseye AS builder
+FROM python:3.12-slim-trixie AS builder
 
 ARG GDAL_VERSION=3.10.3
 ARG SOURCE_DIR=/usr/local/src/gdal
@@ -46,7 +46,7 @@ RUN pip uninstall -y gdal && \
     pip install --no-cache-dir GDAL==$(gdal-config --version)
 
 # ---- Runtime Stage ----
-FROM python:3.12-slim-bullseye AS runtime
+FROM python:3.12-slim-trixie AS runtime
 
 # Only install runtime dependencies
 RUN apt-get update && \
@@ -55,7 +55,7 @@ RUN apt-get update && \
         libsqlite3-dev sqlite3 libpq-dev libcurl4-gnutls-dev \
         libproj-dev libxml2-dev libgeos-dev libnetcdf-dev \
         libpoppler-dev libspatialite-dev libhdf4-alt-dev \
-        libhdf5-serial-dev libopenjp2-7-dev && \
+        libhdf5-serial-dev libopenjp2-7-dev vim && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages and binaries from builder
@@ -69,9 +69,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 ENV GDAL_DATA=/usr/share/gdal/
-ENV PYTHONPATH=/code:/usr/lib/grass78/etc/python/
-ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib/grass78/lib
-ENV PATH=/usr/lib/grass78/bin:/usr/lib/grass78/scripts:$PATH
+ENV PYTHONPATH=/code:/usr/lib/grass84/etc/python/
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib/grass84/lib
+ENV PATH=/usr/lib/grass84/bin:/usr/lib/grass84/scripts:$PATH
 
 # Copy project code
 COPY empatia /code/empatia

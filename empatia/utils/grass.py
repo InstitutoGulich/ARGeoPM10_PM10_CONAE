@@ -10,7 +10,7 @@ from empatia.settings import GISBASE, GISDB, LOCATION, MAPSET
 from empatia.settings.constants import CELL_NULL_VALUE, MIN_PERCENTAGE_OF_VALID_DATA
 from empatia.settings.log import logger
 
-_ = gsetup.init(GISBASE, GISDB, LOCATION, MAPSET)
+_ = gsetup.init(GISDB, LOCATION, MAPSET)
 
 
 def clean_db() -> None:
@@ -265,9 +265,7 @@ def get_ranges(rinput: str) -> Tuple:
     Returns
         Maximum and Minimum value of the raster
     """
-    raster = garray.array()
-    raster.read(rinput)
-
+    raster = garray.array(rinput)
     return str(raster.max()), str(raster.min())
 
 
@@ -279,8 +277,7 @@ def discretize_values(rinput: str, rule_func: Any, name: str) -> None:
         rule_funct: function to assign classes
         name: discretized raster map name
     """
-    raster = garray.array()
-    raster.read(rinput)
+    raster = garray.array(rinput)
 
     new_raster = garray.array()
     for y in range(raster.shape[0]):

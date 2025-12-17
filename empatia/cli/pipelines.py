@@ -59,7 +59,7 @@ from empatia.utils import (
     remove_folders_from_date,
     zip_directory,
     create_xml
-)
+    )
 
 from empatia.utils.grass import (
     apply_mask,
@@ -344,6 +344,7 @@ def computing_ica(
     prediction_dir_path: str,
     processed_dir_path: str,
 ) -> None:
+
     pattern = f"{processed_dir_path}{PM10_PREFIX_FILENAME}_*.tif"
     daily_predictions = sorted(glob.glob(pattern))
     products = []
@@ -354,20 +355,25 @@ def computing_ica(
         # Import to GRASS
         import_gtiff(dp, rname)
         products.append(dp.split("/")[-1].split(".")[0])
+
     refresh_region()
     ica_file = f"{ICA_PATH}_{min_date.strftime('%Y%m%d')}_v001"
     ica_dir = f"{prediction_dir_path}{ica_file}/"
     if not os.path.exists(ica_dir):
         os.mkdir(ica_dir)
+
     # Compute daily mean
     compute_mean(ica_rasters, "daily_ica")
+
     # Reclassified prediction
     rname = "ICA"
     discretize_values("daily_ica", get_qa_class, rname)
     _max, _min = get_ranges(rname)
+
     # Export Gtiff
     reset_color_table(rname, ICA_COLOR_RULES_PATH)
     export_multiband_gtiff([rname], ica_file, f"{ica_dir}{ica_file}", NODATA)
+
     # raster2gtiff(rname, f"{p_dir}{ica_file}")
     # Create XML
     metadata = dict(
@@ -404,10 +410,13 @@ def computing_pm_10(
     prediction_dir_path: str,
     processed_dir_path: str,
     viirs_file_path: str,
-) -> Tuple[str, DefaultDict[Any, List], dt.datetime]:
+    ) -> Tuple[str, DefaultDict[Any, List], dt.datetime]:
+    
     log_prediction = defaultdict(list)  # type: ignore
     creation_date = dt.datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
+    
     for modis_orbit in modis_outputs:
+        logger.debug(f"Processing orbit: {modis_orbit}")
         aod_file, sensor, min_date = modis_orbit.values()
         pattern = f"{processed_dir_path}*_{min_date.hour}_{sensor}.tif"
         features_files = sorted(glob.glob(pattern))
@@ -415,24 +424,31 @@ def computing_pm_10(
         features_files.insert(4, str(DOMAIN_DATA_PATH))
         features_files.append(str(viirs_file_path))
         #features_files = [str(f) for f in features_files if (("SPEEDMAX" not in f))]
+        
         # Predict PM10
         pm10_file_path = (
             f"{PM10_PREFIX_FILENAME}_{min_date.strftime('%Y%m%d_%H%M%S')}_v001"
         )
-        print(f"Predicting PM10 for {min_date} using {features_files}")
+        logger.debug(f"Predicting PM10 for {pm10_file_path}...")
         predict(estimator, features_files, f"{processed_dir_path}{pm10_file_path}")
         pm10_file = f"{processed_dir_path}{pm10_file_path}.tif"
         log_prediction[sensor].append(pm10_file)
+        
         # Get prediction file
+        logger.debug(f"Importing PM10 file {pm10_file}...")
         pm10_band_name = "PM10"
         import_gtiff(pm10_file, pm10_band_name)
         _max, _min = get_ranges(pm10_band_name)
         reset_color_table(pm10_band_name, PM10_COLOR_RULES_PATH)
+        
         # Get AOD associated
+        logger.debug(f"Importing AOD file {aod_file}...")
         aod_band_name = "QA_AOD"
         import_gtiff(aod_file, aod_band_name)
         _max2, _min2 = get_ranges(aod_band_name)
+        
         # Export Gtiff
+        logger.debug(f"Exporting PM10 file {pm10_file_path}...")
         pm10_dir = f"{prediction_dir_path}{pm10_file_path}/"
         if not os.path.exists(pm10_dir):
             os.mkdir(pm10_dir)
@@ -444,7 +460,9 @@ def computing_pm_10(
             f"{pm10_dir}{pm10_file_path}",
             NODATA,
         )
+        
         # Create XML
+        logger.debug(f"Creating XML for {pm10_file_path}...")
         maiac_files = [
             os.path.basename(x) for x in glob.glob(f"{current_maiac_path}*.hdf")
         ]
@@ -468,16 +486,22 @@ def computing_pm_10(
                 ],
             )
         )
+        
         # Uncomment to use metadata
         create_xml(DAILY_PM10_TEMPLATE_PATH, metadata, f"{pm10_dir}{pm10_file_path}")
+        
         # Export PNG
+        logger.debug(f"Creating PNG for {pm10_file_path}...")
         raster2png(pm10_band_name, f"{pm10_dir}{pm10_file_path}")
+        
         # Remove aux.xml temporary files
         if os.path.exists(f"{pm10_dir}/{pm10_file_path}.aux.xml"):
             remove_file(f"{pm10_dir}/{pm10_file_path}.aux.xml")
+        
         # Zip directory with all product
         logger.info(f"Writing {prediction_dir_path}/{pm10_file_path}.zip")
         zip_directory(pm10_dir,f'{prediction_dir_path}/{pm10_file_path}')
+
     return creation_date, log_prediction, min_date
 
 

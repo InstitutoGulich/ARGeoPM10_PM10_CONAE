@@ -8,25 +8,11 @@ ARG NPROC=16
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential wget automake cmake libtool pkg-config \
-        libsqlite3-dev sqlite3 libpq-dev libcurl4-gnutls-dev \
+        libcurl4-gnutls-dev \
         libproj-dev libxml2-dev libgeos-dev libnetcdf-dev \
-        libpoppler-dev libspatialite-dev libhdf4-alt-dev \
-        libhdf5-serial-dev libopenjp2-7-dev grass && \
+        libhdf4-alt-dev \
+        libhdf5-serial-dev grass && \
     rm -rf /var/lib/apt/lists/*
-
-## Build and install PROJ
-#RUN wget "http://download.osgeo.org/proj/proj-6.0.0.tar.gz" && \
-#    tar -xzf "proj-6.0.0.tar.gz" && \
-#    mv proj-6.0.0 proj && \
-#    echo "#!/bin/sh" > proj/autogen.sh && \
-#    chmod +x proj/autogen.sh && \
-#    cd proj && ./autogen.sh && \
-#    CXXFLAGS='-DPROJ_RENAME_SYMBOLS' CFLAGS='-DPROJ_RENAME_SYMBOLS' ./configure --disable-static --prefix=/usr/local && \
-#    make -j"$(nproc)" && make install && \
-#    mv /usr/local/lib/libproj.so.15.0.0 /usr/local/lib/libinternalproj.so.15.0.0 && \
-#    rm /usr/local/lib/libproj.so* && rm /usr/local/lib/libproj.la && \
-#    ln -s libinternalproj.so.15.0.0 /usr/local/lib/libinternalproj.so.15 && \
-#    ln -s libinternalproj.so.15.0.0 /usr/local/lib/libinternalproj.so
 
 # Build and install GDAL
 RUN mkdir -p "${SOURCE_DIR}" && \
@@ -52,10 +38,10 @@ FROM python:3.12-slim-trixie AS runtime
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         grass libglib2.0-0 libsm6 libxrender1 \
-        libsqlite3-dev sqlite3 libpq-dev libcurl4-gnutls-dev \
-        libproj-dev libxml2-dev libgeos-dev libnetcdf-dev \
-        libpoppler-dev libspatialite-dev libhdf4-alt-dev \
-        libhdf5-serial-dev libopenjp2-7-dev vim && \
+        libcurl4t64 \
+        libproj-dev libxml2 libgeos-c1t64 libgeos3.13.1 libnetcdf22 \
+        libhdf4-0-alt \
+        libhdf5-310 grass gdal-bin python3-gdal && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages and binaries from builder

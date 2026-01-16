@@ -3,7 +3,7 @@ FROM python:3.12-slim-trixie AS builder
 
 ARG GDAL_VERSION=3.10.3
 ARG SOURCE_DIR=/usr/local/src/gdal
-ARG NPROC=16
+ARG NPROC=8
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get update && \
         libcurl4-gnutls-dev \
         libproj-dev libxml2-dev libgeos-dev libnetcdf-dev \
         libhdf4-alt-dev \
-        libhdf5-serial-dev grass && \
+        libhdf5-serial-dev bison grass && \
     rm -rf /var/lib/apt/lists/*
 
 # Build and install GDAL

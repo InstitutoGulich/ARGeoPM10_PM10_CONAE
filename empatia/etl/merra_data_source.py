@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any
 import os
 
 import json
@@ -11,6 +11,9 @@ from empatia.settings.constants import MERRA_VERSION
 from empatia.settings.credentials import NASA_TOKEN
 from empatia.settings.log import logger
 
+from empatia.etl.downloader import get_data_earthdata
+
+from datetime import datetime
 
 import requests
 from requests.adapters import HTTPAdapter, Retry
@@ -124,7 +127,7 @@ def get_merra_product_url(request):
 
 
 def get_merra_files(
-    date_stamp: str,
+    date: str,
     base_url: str,
     product: str,
     shortname: str,
@@ -134,51 +137,26 @@ def get_merra_files(
     version: str,
     variables: List[str] = [],
     file_format: str = "nc",
-) -> None:
+) -> List[Any]:
     """
     Download MERRA products
     """
 
     try:
-        dst_path = f"{MERRA_DATASET_PATH}/{shortname}/{date_stamp}/"
+        dst_path = f"{MERRA_DATASET_PATH}/{shortname}/{date}/"
         os.makedirs(dst_path, exist_ok=True)
     except OSError as e:
         logger.error(f"Error creating directory {dst_path}: {e}")
         return
 
-    logger.info(f"Requesting subset for {shortname} on {date_stamp} from {base_url}")
-
-    data = []
-    for var in variables:
-        data.append({'datasetId': f"{shortname}_{MERRA_VERSION}", 'variable': var})
-
-    subset_request = {
-        'methodname': 'subset',
-        'type': 'jsonwsp/request',
-        'version': '1.0',
-        'args': {
-            'role'  : 'subset',
-            'start' : date_stamp + 'T' + start_hour,
-            'end'   : date_stamp + 'T' + end_hour,
-            'box'   : region,
-            'crop'  : True, 
-            'data': data
-        }
-    }
-
-    FORCE_DOWNLOAD = False
-    if os.path.exists(f"{dst_path}{product}.nc") and not FORCE_DOWNLOAD:
-        logger.info(f"{dst_path}{product}.nc already exists.. skipping download")
-        return f"{product}.nc"
-
-    try:
-        url = get_merra_product_url(subset_request)
-    except Exception as e:
-        logger.error(f"Failed to get MERRA product URL: {e}")
-        return
-
     logger.info(f"Downloading MERRA2 product: {product}")
-    headers = {"Authorization": f"Bearer {NASA_TOKEN}"}
-    download(url, product, f"{dst_path}{product}.nc", headers=headers)
-    logger.info(f"Files downloaded to {dst_path}")
-    return f"{product}.nc"
+
+    start_date = datetime.strptime(date, "%Y-%m-%d") 
+    start_hour = datetime.strptime(start_hour, "%H:%M:%S")
+    start_date = start_date.replace(hour=0, minute=0, second=0)
+    end_date = datetime.strptime(date, "%Y-%m-%d")
+    end_hour = datetime.strptime(end_hour, "%H:%M:%S")
+    end_date = end_date.replace(hour=23, minute=59, second=59)
+
+    fnames = get_data_earthdata(shortname, region, start_date, end_date, dst_path, variables=variables)
+    return fnames if fnames else []

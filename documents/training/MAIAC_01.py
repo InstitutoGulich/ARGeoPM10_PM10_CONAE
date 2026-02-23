@@ -9,11 +9,12 @@ from rasterio.crs import CRS
 from tqdm import tqdm
 
 # Constants
-tile = 'h13v12'
-root_folder = f'/home/msgro/work/empatia/data/model/MAIAC/{tile}/'
-valid_qa = [1, 2, 9, 10, 17, 18, 25, 26, 97, 105, 113, 121, 98, 106, 114, 122]
-working_projection = 'EPSG:4326'  # WGS84
-nodata_value = -9999
+TILE = 'h13v12'
+ROOT_FOLDER = f'/media/data/msgro/empatia/data/model/MAIAC'
+TILE_FOLDER = f'{ROOT_FOLDER}/{TILE}/'
+VALID_QA = [1, 2, 9, 10, 17, 18, 25, 26, 97, 105, 113, 121, 98, 106, 114, 122]
+WORKING_PROJECTION = 'EPSG:4326'  # WGS84
+NODATA_VALUE = -9999
 
 # %%
 
@@ -26,8 +27,8 @@ def reproject_raster(src, dst_crs, qa):
     
     src_array = src.ReadAsArray()
 
-    invalid_mask = ~np.isin(qa, valid_qa)
-    src_array[invalid_mask] = nodata_value
+    invalid_mask = ~np.isin(qa, VALID_QA)
+    src_array[invalid_mask] = NODATA_VALUE
     
     dst_array = np.empty(src_array.shape, dtype = src_array.dtype)
     src_transform = Affine.from_gdal(*src_transform)  # Convert source transform
@@ -44,12 +45,18 @@ def reproject_raster(src, dst_crs, qa):
     return dst_array, dst_transform
 
 def write_tif(array, transform, fileout):
-    with rasterio.open(
-            fileout, 'w', driver='GTiff', height=array.shape[0], width=array.shape[1], 
-            count=1, dtype=array.dtype,
-            crs=newproj, transform=transform, nodata=nodata_value
-        ) as dst:
-            dst.write(array, 1)
+    options = {
+        'driver': 'GTiff',
+        'height': array.shape[0],
+        'width': array.shape[1],
+        'count': 1,
+        'dtype': array.dtype,
+        'crs': WORKING_PROJECTION,
+        'transform': transform,
+        'nodata': NODATA_VALUE
+    }
+    with rasterio.open(fileout, 'w', **options) as dst:
+        dst.write(array, 1)
 
 # %%
 def QA2Char(num):
@@ -76,7 +83,6 @@ def QA2Char(num):
     return qa_arr
 
 # %%
-
 def proccess_hdf_file(filepath, output_dir):
 
     # Open HDF file and extract subdatasets using gdal
@@ -99,7 +105,7 @@ def proccess_hdf_file(filepath, output_dir):
         band_wavelength = band.split('_')[-1]  # Extract wavelength from band name
 
         # Reproject to WGS84
-        band_reproj, band_transform = reproject_raster(band_ds, working_projection, qa)
+        band_reproj, band_transform = reproject_raster(band_ds, WORKING_PROJECTION, qa)
 
         # Save each orbit as .tif
         for i, orbit in enumerate(orbits):
@@ -111,14 +117,14 @@ def proccess_hdf_file(filepath, output_dir):
             # AOD 470 nm
             matrix = band_reproj[i]
             if not (matrix < 0).all():
-                fileout = os.path.join(output_dir, f'MCD19A2.{tile}.{sat}.{band_wavelength}.{year}{jd}.{hour}.tif')
+                fileout = os.path.join(output_dir, f'MCD19A2.{TILE}.{sat}.{band_wavelength}.{year}{jd}.{hour}.tif')
                 write_tif(matrix, band_transform, fileout)
             else:
                 print(f"Skipping {band_wavelength} {year}{jd}.{hour}")
 
     return True
 
-def proccess_hdf_files_in_directory(input_dir, output_dir):
+def proccess(input_dir, output_dir):
 
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -137,8 +143,8 @@ if __name__ == "__main__":
     init_year = 2010
     end_year = 2020
     for year in range(init_year, end_year):
-        input_dir = os.path.join(root_folder, str(year), 'hdf')
-        output_dir = os.path.join(root_folder, str(year), 'tif')
-        proccess_hdf_files_in_directory(input_dir, output_dir)
+        input_dir = os.path.join(TILE_FOLDER, str(year), 'hdf')
+        output_dir = os.path.join(TILE_FOLDER, str(year), 'tif')
+        proccess(input_dir, output_dir)
         print(f"Processed files for year {year}.")
 # %%

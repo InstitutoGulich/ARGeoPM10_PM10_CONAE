@@ -2,7 +2,6 @@ import datetime as dt
 import glob
 import itertools
 import json
-import math
 import os
 from collections import defaultdict
 from typing import Any, DefaultDict, Dict, List, Tuple
@@ -204,7 +203,7 @@ def predict(model: Any, rfiles: List, outname: str) -> None:
         outname: name of the output raster map
     """
     stack = Raster(rfiles)
-    prediction = stack.predict(estimator=model)
+    prediction = stack.predict(estimator=model, nodata=NODATA)
 
     _ = prediction.write(file_path=f"{outname}.tif", nodata=NODATA)
 
@@ -227,41 +226,35 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
         else get_dates_to_download(log_file, today)
     )
 
-    # logger.info("Get VIIRS data")
-    # viirs_file_path = get_viirs_dataset_path(today.year)
-    # if not os.path.exists(viirs_file_path):
-    #    viirs_file_path = get_viirs_dataset_path(today.year - 1)
-
     logger.info("Setting domain...")
     set_domain(DOMAIN_DATA_PATH)
     apply_mask_result = apply_mask(REGION_DATA_PATH)
     total_cells = get_total_cells(apply_mask_result)
 
     logger.info("Processing...")
-    new_uncompleted_dates = []
+    uncompleted_dates = []
     for date in dates_to_download:
         logger.info("===================================")
         logger.info(f"Starting date: {date}")
         logger.info("===================================")
+        
         processed_dir_path = f"{PROCESSED_DATA_PATH}/{date}/"
-
-        logger.info("Get VIIRS data")
-        date_dt = dt.datetime.strptime(date, "%Y-%m-%d")
-        viirs_file_path = get_viirs_dataset_path(date_dt.year - 1)
-        viirs_file_path = get_viirs_dataset_path(2021)
-        if not os.path.exists(viirs_file_path):
-            viirs_file_path = get_viirs_dataset_path(2022)
-        logger.info(f"Using {viirs_file_path}...")
-
         if not os.path.exists(processed_dir_path):
             os.mkdir(processed_dir_path)
 
         prediction_dir_path = f"{PREDICTION_DATA_PATH}/{date}/"
         if not os.path.exists(prediction_dir_path):
             os.mkdir(prediction_dir_path)
+        logger.info("Get VIIRS data")
+        
+        date_dt = dt.datetime.strptime(date, "%Y-%m-%d")
+        viirs_file_path = get_viirs_dataset_path(date_dt.year - 1)
+        if not os.path.exists(viirs_file_path):
+            viirs_file_path = get_viirs_dataset_path(2021)
+        logger.info(f"Using {viirs_file_path}...")
 
+        logger.info("Downloading MAIAC data...")
         try:
-            logger.info("Downloading MAIAC data...")
             current_maiac_path = f"{MODIS_DATASET_PATH}/{MAIAC_PRODUCT}/{date}/"
             modis_outputs = process_modis_data(
                 current_maiac_path, date, processed_dir_path, total_cells
@@ -269,22 +262,23 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
 
             if not modis_outputs:
                 logger.warning(f"Not found valid MODIS data for {date}")
+                uncompleted_dates.append(date)
                 continue
         except Exception as e:
             logger.error(f"Not found MAIAC for {date}: {e}")
-            new_uncompleted_dates.append(date)
+            uncompleted_dates.append(date)
             continue
 
+        logger.info("Downloading MERRA data...")
         try:
-            logger.info("Downloading MERRA data...")
             process_merra_data(date, modis_outputs, processed_dir_path)
         except Exception as e:
             logger.error(f"Not found MERRA for {date}: {e}")
-            new_uncompleted_dates.append(date)
+            uncompleted_dates.append(date)
             continue
 
+        logger.info("Computing PM10...")
         try:
-            logger.info("Computing PM10...")
             creation_date, log_prediction, min_date = computing_pm_10(
                 current_maiac_path,
                 modis_outputs,
@@ -295,11 +289,12 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
             )
         except Exception as e:
             logger.error(f"Uncompleted PM10 process: {e}")
-            new_uncompleted_dates.append(date)
+            uncompleted_dates.append(date)
             continue
 
+        logger.info("Computing ICA...")
         try:
-            logger.info("Computing ICA...")
+            
             computing_ica(
                 creation_date,
                 log_prediction,
@@ -309,12 +304,12 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
             )
         except Exception as e:
             logger.error(f"Uncompleted ICA process: {e}")
-            new_uncompleted_dates.append(date)
+            uncompleted_dates.append(date)
             continue
 
-        #delete_intermediate_files(processed_dir_path)
+        delete_intermediate_files(processed_dir_path)
 
-    update_log_data(dates_to_download, log_file, new_uncompleted_dates)
+    update_log_data(dates_to_download, log_file, uncompleted_dates)
 
 
 def update_log_data(
@@ -424,6 +419,7 @@ def computing_pm_10(
         features_files.insert(4, str(DOMAIN_DATA_PATH))
         features_files.append(str(viirs_file_path))
         #features_files = [str(f) for f in features_files if (("SPEEDMAX" not in f))]
+        #features_files = [str(f) for f in features_files if (("Optical_Depth_055" not in f))]
         
         # Predict PM10
         pm10_file_path = (
@@ -511,27 +507,25 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
         product = dataset.get("product", "")
         variables = dataset.get("variables", [])
         merra_filename = get_merra_files(date, **dataset)  # type: ignore
+
         # Import to GRASS to reproject and rescale
         for modis_orbit, var in itertools.product(modis_outputs, variables):
             _, sensor, min_date = modis_orbit.values()
             current_merra_path = (
-                f"NETCDF:{MERRA_DATASET_PATH}/{shortname}/" f"{date}/{merra_filename}:{var}"
-                #f"NETCDF:{MERRA_DATASET_PATH}/{shortname}/" f"{date}/{product}.nc:{var}"
+                f"NETCDF:{merra_filename[0]}:{var}"
             )
-            # merra_band = (int(min_date.hour) % 12) + 1
-            merra_band = int(min_date.hour) + 1
+            merra_band = min_date.hour + 1
             if shortname == MERRA_SHORTNAME:
-                merra_band = (math.trunc(int(min_date.hour) / 3) + 1) - 4
+                merra_band = (min_date.hour // 3 + 1) - 4
 
             rname = f"{var}_{min_date.hour}_{sensor}"
             rofile = f"{processed_dir}{rname}"
             remove_mask()
             try:
                 import_netcdf(current_merra_path, merra_band, rname)
-            except Exception:
-                os.remove(f"{MERRA_DATASET_PATH}/{shortname}/{date}/{product}.nc")
-                get_merra_files(date, **dataset)  # type: ignore
-                import_netcdf(current_merra_path, merra_band, rname)
+            except Exception as e:
+                logger.warning(f"Error importing MERRA file {current_merra_path} as {rname}: {e}")
+                continue
             
             get_resampling(rname)
             apply_mask(REGION_DATA_PATH)
@@ -543,13 +537,19 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
 def process_modis_data(
     current_maiac_path: str, date: str, processed_dir_path: str, total_cells: int
 ) -> List[Any]:
+    
+    os.makedirs(current_maiac_path, exist_ok=True)
+    
     if not get_modis_files(
+        current_maiac_path,
         MAIAC_PRODUCT,
         MAIAC_COLLECTION,
-        start_date=date,
         **MODIS_REGION,  # type: ignore
+        start_date=date,
     ):
+        logger.warning(f"Not found MAIAC data for {date}")
         return []
+    
     logger.info("Processing MAIAC data...")
     null_files = []  # type: ignore
     modis_outputs = []  # type: ignore

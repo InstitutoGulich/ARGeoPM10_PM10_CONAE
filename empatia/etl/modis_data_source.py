@@ -2,16 +2,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Dict, List, Tuple
-
+import os
 from bs4 import BeautifulSoup
-
-from empatia.etl.downloader import get_data
+from datetime import datetime
+from empatia.etl.downloader import get_data, get_data_earthdata
 from empatia.settings import MODIS_DATASET_PATH
 from empatia.settings.constants import MODIS_BASE_URL
 from empatia.settings.credentials import NASA_TOKEN
 from empatia.settings.log import logger
-
-# import modapsclient
 
 
 def get_modis_urls(
@@ -30,7 +28,6 @@ def get_modis_urls(
 
     urls: List[str] = []
     fnames: List[Dict] = []
-    # mclient = modapsclient.ModapsClient()
 
     if not end_date:
         end_date = start_date
@@ -93,35 +90,28 @@ def get_modis_urls(
 
 
 def get_modis_files(
-    product: str,
-    collection: int,
-    north: float,
-    south: float,
-    east: float,
-    west: float,
-    start_date: str,
-    end_date: str = None,
-) -> bool:
+        dst_path: str,
+        product: str,
+        collection: int,
+        north: float,
+        south: float,
+        east: float,
+        west: float,
+        start_date: str,
+        end_date: str = None,
+) -> list:
     """
     Download Modis products
     Return: True - if there are files to be processed
             False - otherwise
     """
-
-    headers = {"Authorization": f"Bearer {NASA_TOKEN}"}
-
-    dst_path = f"{MODIS_DATASET_PATH}/{product}/{start_date}/"
     logger.info(f"Get MODIS urls to download files for: {product}")
-    fnames, urls = get_modis_urls(
-        product, collection, north, south, east, west, start_date, end_date
-    )
-    if not fnames:
-        logger.warning(f"NO files found out for the dates: {start_date}-{end_date}")
-        return False
-    logger.info(f"Downloading MODIS's files for: {product}")
-    for fn, url in zip(fnames, urls):
-        fn_splitted = fn.split(".")
-        fn = ".".join(fn_splitted[:-1])
-        file_format = fn_splitted[-1]
-        get_data(url, f"{dst_path}{fn}", file_format, headers=headers)
-    return True
+    if not end_date:
+        end_date = start_date
+        
+    start_date = datetime.strptime(start_date, "%Y-%m-%d") 
+    start_date = start_date.replace(hour=0, minute=0, second=0)
+    end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    end_date = end_date.replace(hour=23, minute=59, second=59)
+    fnames = get_data_earthdata(product, (west, south, east, north), start_date, end_date, dst_path)
+    return fnames

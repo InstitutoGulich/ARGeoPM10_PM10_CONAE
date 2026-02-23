@@ -8,7 +8,6 @@ ARG NPROC=8
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential wget automake cmake libtool pkg-config \
-        libcurl4-gnutls-dev \
         libproj-dev libxml2-dev libgeos-dev libnetcdf-dev \
         libhdf4-alt-dev \
         libhdf5-serial-dev bison grass && \

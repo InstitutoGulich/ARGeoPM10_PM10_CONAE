@@ -22,6 +22,8 @@ setup(
         "beautifulsoup4",
         "scikit-learn",
         "tqdm",
+	    "harmony-py",
+        "earthaccess",
         # Note: GDAL/GRASS are provided by system packages or conda
     ],
     entry_points="""

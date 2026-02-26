@@ -53,11 +53,15 @@ from empatia.settings.constants import (
 from empatia.settings.log import logger
 from empatia.utils import (
     date_range,
+    get_dates_to_download,
+    get_dates_to_download_for_a_range,
     get_qa_class,
+    get_total_cells,
     remove_file,
     remove_folders_from_date,
     zip_directory,
-    create_xml
+    create_xml,
+    update_log_data,
     )
 
 from empatia.utils.grass import (
@@ -81,80 +85,6 @@ from empatia.utils.grass import (
     reset_color_table,
     set_domain,
 )
-
-
-def viirs_etl() -> None:
-    """
-    Compute the mean of April, May and June of the product `VNP46A1`.
-    """
-
-    today = dt.datetime.today()
-    date_start = dt.datetime.strptime(VIIRS_DATE_START, DEFAULT_DATE_FORMAT)
-    date_end = dt.datetime.strptime(VIIRS_DATE_END, DEFAULT_DATE_FORMAT)
-    output_dir = f"{PROCESSED_DATA_PATH}/{VIIRS_PRODUCT}_{date_start.year}/"
-    ds_to_download = date_range(date_start, date_end)
-    uncompleted_dates = []
-    log_file = f"{output_dir}log.txt"
-
-    if today <= date_end:
-        logger.warning("Unable to update VIIRS data yet")
-        return None
-
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
-    if os.path.exists(log_file):
-        with open(log_file) as json_file:
-            log_data = json.load(json_file)
-            status = log_data["status"]
-            ds_to_download = log_data["uncompleted_dates"]
-        if status == "OK":
-            logger.info("VIIRS data already updated")
-            return None
-
-    logger.info("Running VIIRS ETL")
-
-    logger.info("Setting domain...")
-    set_domain(DOMAIN_DATA_PATH)
-    apply_mask(REGION_DATA_PATH)
-
-    logger.info("Downloading VIIRS data...")
-    viirs_rasters = []
-    for ds in ds_to_download:
-        try:
-            logger.info(f"Date: {ds}")
-            if not get_modis_files(
-                VIIRS_PRODUCT,
-                VIIRS_COLLECTION,
-                start_date=ds,
-                **MODIS_REGION,  # type: ignore
-            ):
-                continue
-
-            outname = f"viirs_{ds}"
-            current_viirs_path = f"{MODIS_DATASET_PATH}/{VIIRS_PRODUCT}/{ds}/"
-            get_viirs_mosaic(current_viirs_path, 4, output_dir, f"{outname}.tif")
-            import_gtiff(f"{output_dir}{outname}.tif", outname)
-            viirs_rasters.append(outname)
-        except Exception as e:
-            logger.critical(f"Not found VIIRS for {ds}: {e}")
-            uncompleted_dates.append(ds)
-
-    logger.info("Computing VIIRS average...")
-    try:
-        raster_name = f"viirs_night_lights_{date_start.year}"
-        compute_mean(viirs_rasters, raster_name)
-        refresh_region()
-        raster2gtiff(raster_name, f"{output_dir}{raster_name}")
-        log_data = {"status": "OK", "uncompleted_dates": uncompleted_dates}
-    except Exception as e:
-        logger.critical(f"Uncompleted VIIRS update: {e}")
-        log_data = {"status": "FAIL", "uncompleted_dates": uncompleted_dates}
-
-    with open(log_file, "w") as outfile:
-        json.dump(log_data, outfile)
-
-    return None
 
 
 def get_viirs_dataset_path(year: int) -> str:
@@ -204,124 +134,8 @@ def predict(model: Any, rfiles: List, outname: str) -> None:
     """
     stack = Raster(rfiles)
     prediction = stack.predict(estimator=model, nodata=NODATA)
-
+    #prediction = prediction.apply(lambda x: 10.0**x, nodata=NODATA)
     _ = prediction.write(file_path=f"{outname}.tif", nodata=NODATA)
-
-
-def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
-    """
-    Compute the following daily products:
-        PM10 per sensor orbit
-        ICA
-    """
-    log_file = f"{PROCESSED_DATA_PATH}/log.txt"
-    
-    estimator = PM10Estimator.load_model(MODEL_PATH)
-    logger.info(f"Using..{MODEL_PATH}")
-    
-    today = dt.datetime.today()
-    dates_to_download = (
-        get_dates_to_download_for_a_range(start_date, end_date)
-        if start_date
-        else get_dates_to_download(log_file, today)
-    )
-
-    logger.info("Setting domain...")
-    set_domain(DOMAIN_DATA_PATH)
-    apply_mask_result = apply_mask(REGION_DATA_PATH)
-    total_cells = get_total_cells(apply_mask_result)
-
-    logger.info("Processing...")
-    uncompleted_dates = []
-    for date in dates_to_download:
-        logger.info("===================================")
-        logger.info(f"Starting date: {date}")
-        logger.info("===================================")
-        
-        processed_dir_path = f"{PROCESSED_DATA_PATH}/{date}/"
-        if not os.path.exists(processed_dir_path):
-            os.mkdir(processed_dir_path)
-
-        prediction_dir_path = f"{PREDICTION_DATA_PATH}/{date}/"
-        if not os.path.exists(prediction_dir_path):
-            os.mkdir(prediction_dir_path)
-        logger.info("Get VIIRS data")
-        
-        date_dt = dt.datetime.strptime(date, "%Y-%m-%d")
-        viirs_file_path = get_viirs_dataset_path(date_dt.year - 1)
-        if not os.path.exists(viirs_file_path):
-            viirs_file_path = get_viirs_dataset_path(2021)
-        logger.info(f"Using {viirs_file_path}...")
-
-        logger.info("Downloading MAIAC data...")
-        try:
-            current_maiac_path = f"{MODIS_DATASET_PATH}/{MAIAC_PRODUCT}/{date}/"
-            modis_outputs = process_modis_data(
-                current_maiac_path, date, processed_dir_path, total_cells
-            )
-
-            if not modis_outputs:
-                logger.warning(f"Not found valid MODIS data for {date}")
-                uncompleted_dates.append(date)
-                continue
-        except Exception as e:
-            logger.error(f"Not found MAIAC for {date}: {e}")
-            uncompleted_dates.append(date)
-            continue
-
-        logger.info("Downloading MERRA data...")
-        try:
-            process_merra_data(date, modis_outputs, processed_dir_path)
-        except Exception as e:
-            logger.error(f"Not found MERRA for {date}: {e}")
-            uncompleted_dates.append(date)
-            continue
-
-        logger.info("Computing PM10...")
-        try:
-            creation_date, log_prediction, min_date = computing_pm_10(
-                current_maiac_path,
-                modis_outputs,
-                estimator,
-                prediction_dir_path,
-                processed_dir_path,
-                viirs_file_path,
-            )
-        except Exception as e:
-            logger.error(f"Uncompleted PM10 process: {e}")
-            uncompleted_dates.append(date)
-            continue
-
-        logger.info("Computing ICA...")
-        try:
-            
-            computing_ica(
-                creation_date,
-                log_prediction,
-                min_date,
-                prediction_dir_path,
-                processed_dir_path,
-            )
-        except Exception as e:
-            logger.error(f"Uncompleted ICA process: {e}")
-            uncompleted_dates.append(date)
-            continue
-
-        delete_intermediate_files(processed_dir_path)
-
-    update_log_data(dates_to_download, log_file, uncompleted_dates)
-
-
-def update_log_data(
-    dates_to_download: List[str], log_file: str, new_uncompleted_dates: List[str]
-) -> None:
-    last_execution_date = dates_to_download[-1]
-    log_data = {
-        "last_execution_date": last_execution_date,
-        "uncompleted_dates": sorted(set(new_uncompleted_dates)),
-    }
-    with open(log_file, "w") as outfile:
-        json.dump(log_data, outfile)
 
 
 def delete_intermediate_files(processed_dir_path: str) -> None:
@@ -333,12 +147,12 @@ def delete_intermediate_files(processed_dir_path: str) -> None:
 
 
 def computing_ica(
-    creation_date: str,
-    log_prediction: DefaultDict[Any, List],
-    min_date: dt.date,
-    prediction_dir_path: str,
-    processed_dir_path: str,
-) -> None:
+        creation_date: str,
+        log_prediction: DefaultDict[Any, List],
+        min_date: dt.date,
+        prediction_dir_path: str,
+        processed_dir_path: str
+    ) -> None:
 
     pattern = f"{processed_dir_path}{PM10_PREFIX_FILENAME}_*.tif"
     daily_predictions = sorted(glob.glob(pattern))
@@ -399,12 +213,12 @@ def computing_ica(
 
 
 def computing_pm_10(
-    current_maiac_path: str,
-    modis_outputs: List[Any],
-    estimator: str,
-    prediction_dir_path: str,
-    processed_dir_path: str,
-    viirs_file_path: str,
+        current_maiac_path: str,
+        modis_outputs: List[Any],
+        estimator: str,
+        prediction_dir_path: str,
+        processed_dir_path: str,
+        viirs_file_path: str
     ) -> Tuple[str, DefaultDict[Any, List], dt.datetime]:
     
     log_prediction = defaultdict(list)  # type: ignore
@@ -418,8 +232,8 @@ def computing_pm_10(
         features_files.pop(1)  # remove AOD_QA
         features_files.insert(4, str(DOMAIN_DATA_PATH))
         features_files.append(str(viirs_file_path))
-        #features_files = [str(f) for f in features_files if (("SPEEDMAX" not in f))]
-        #features_files = [str(f) for f in features_files if (("Optical_Depth_055" not in f))]
+        features_files = [str(f) for f in features_files if (("SPEEDMAX" not in f))]
+        features_files = [str(f) for f in features_files if (("Optical_Depth_055" not in f))]
         
         # Predict PM10
         pm10_file_path = (
@@ -535,8 +349,11 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
 
 
 def process_modis_data(
-    current_maiac_path: str, date: str, processed_dir_path: str, total_cells: int
-) -> List[Any]:
+        current_maiac_path: str, 
+        date: str, 
+        processed_dir_path: str, 
+        total_cells: int
+    ) -> List[Any]:
     
     os.makedirs(current_maiac_path, exist_ok=True)
     
@@ -544,15 +361,15 @@ def process_modis_data(
         current_maiac_path,
         MAIAC_PRODUCT,
         MAIAC_COLLECTION,
-        **MODIS_REGION,  # type: ignore
+        **MODIS_REGION,
         start_date=date,
     ):
         logger.warning(f"Not found MAIAC data for {date}")
         return []
     
     logger.info("Processing MAIAC data...")
-    null_files = []  # type: ignore
-    modis_outputs = []  # type: ignore
+    null_files = []
+    modis_outputs = []
     for band, prefix in MAIAC_BANDS.items():
         logger.info(f"********* {band} {prefix} *********")
         modis_outputs = get_modis_mosaic(
@@ -594,45 +411,108 @@ def process_modis_data(
     return modis_outputs
 
 
-def get_dates_to_download_for_a_range(
-    start_date: str, end_date: str = None
-) -> List[str]:
-    if not end_date:
-        return [start_date]
-    date_format = "%Y-%m-%d"
-    start_date_dt = dt.datetime.strptime(start_date, date_format)
-    end_date_dt = dt.datetime.strptime(end_date, date_format)
-    return [
-        (start_date_dt + dt.timedelta(days=days)).strftime(date_format)
-        for days in range((end_date_dt - start_date_dt).days + 1)
-    ]
-
-
-def get_dates_to_download(log_file: str, today: dt.datetime) -> List[str]:
-    min_exec_date = dt.datetime.strftime(
-        today - dt.timedelta(days=90), DEFAULT_DATE_FORMAT
+def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
+    """
+    Compute the following daily products:
+        PM10 per sensor orbit
+        ICA
+    """
+    log_file = f"{PROCESSED_DATA_PATH}/log.txt"
+    
+    estimator = PM10Estimator.load_model(MODEL_PATH)
+    logger.info(f"Using..{MODEL_PATH}")
+    
+    today = dt.datetime.today()
+    dates_to_download = (
+        get_dates_to_download_for_a_range(start_date, end_date)
+        if start_date
+        else get_dates_to_download(log_file, today)
     )
-    logger.info("Running ETL ...")
-    if os.path.exists(log_file):
-        with open(log_file) as json_file:
-            log_data = json.load(json_file)
-            uncompleted_dates = log_data["uncompleted_dates"]
-            date_start = dt.datetime.strptime(
-                log_data["last_execution_date"], DEFAULT_DATE_FORMAT
+
+    logger.info("Setting domain...")
+    set_domain(DOMAIN_DATA_PATH)
+    apply_mask_result = apply_mask(REGION_DATA_PATH)
+    total_cells = get_total_cells(apply_mask_result)
+
+    logger.info("Processing...")
+    uncompleted_dates = []
+    for date in dates_to_download:
+        logger.info("===================================")
+        logger.info(f"Starting date: {date}")
+        logger.info("===================================")
+        
+        processed_dir_path = f"{PROCESSED_DATA_PATH}/{date}/"
+        if not os.path.exists(processed_dir_path):
+            os.mkdir(processed_dir_path)
+
+        prediction_dir_path = f"{PREDICTION_DATA_PATH}/{date}/"
+        if not os.path.exists(prediction_dir_path):
+            os.mkdir(prediction_dir_path)
+        logger.info("Get VIIRS data")
+        
+        date_dt = dt.datetime.strptime(date, "%Y-%m-%d")
+        viirs_file_path = get_viirs_dataset_path(date_dt.year - 1)
+        if not os.path.exists(viirs_file_path):
+            viirs_file_path = get_viirs_dataset_path(2021)
+        logger.info(f"Using {viirs_file_path}...")
+
+        logger.info("Downloading MAIAC data...")
+        try:
+            current_maiac_path = f"{MODIS_DATASET_PATH}/{MAIAC_PRODUCT}/{date}/"
+            modis_outputs = process_modis_data(
+                current_maiac_path, date, processed_dir_path, total_cells
             )
-    else:
-        uncompleted_dates = []
-        date_start = today
-    dates_to_download = list(set(uncompleted_dates + date_range(date_start, today)))
-    dates_to_download = sorted(filter(lambda x: x >= min_exec_date, dates_to_download))
-    return dates_to_download
 
+            if not modis_outputs:
+                logger.warning(f"Not found valid MODIS data for {date}")
+                uncompleted_dates.append(date)
+                continue
+        except Exception as e:
+            logger.error(f"Not found MAIAC for {date}: {e}")
+            uncompleted_dates.append(date)
+            continue
 
-def get_total_cells(result: Dict) -> int:
-    cells_data = [k for k in result if k.startswith("cells")][0]
-    total_cells = int(cells_data.replace(" ", "")[6:])
-    logger.debug(f"Total cells in Argentina: {total_cells}")
-    return total_cells
+        logger.info("Downloading MERRA data...")
+        try:
+            process_merra_data(date, modis_outputs, processed_dir_path)
+        except Exception as e:
+            logger.error(f"Not found MERRA for {date}: {e}")
+            uncompleted_dates.append(date)
+            continue
+
+        logger.info("Computing PM10...")
+        try:
+            creation_date, log_prediction, min_date = computing_pm_10(
+                current_maiac_path,
+                modis_outputs,
+                estimator,
+                prediction_dir_path,
+                processed_dir_path,
+                viirs_file_path,
+            )
+        except Exception as e:
+            logger.error(f"Uncompleted PM10 process: {e}")
+            uncompleted_dates.append(date)
+            continue
+
+        logger.info("Computing ICA...")
+        try:
+            
+            computing_ica(
+                creation_date,
+                log_prediction,
+                min_date,
+                prediction_dir_path,
+                processed_dir_path,
+            )
+        except Exception as e:
+            logger.error(f"Uncompleted ICA process: {e}")
+            uncompleted_dates.append(date)
+            continue
+
+        delete_intermediate_files(processed_dir_path)
+
+    update_log_data(dates_to_download, log_file, uncompleted_dates)
 
 
 def monthly_pipeline(ndays: int) -> None:
@@ -746,3 +626,77 @@ def monthly_pipeline(ndays: int) -> None:
 
         # Zip directory with all product
         zip_directory(output_dir, output_dir)
+
+
+def viirs_etl() -> None:
+    """
+    Compute the mean of April, May and June of the product `VNP46A1`.
+    """
+
+    today = dt.datetime.today()
+    date_start = dt.datetime.strptime(VIIRS_DATE_START, DEFAULT_DATE_FORMAT)
+    date_end = dt.datetime.strptime(VIIRS_DATE_END, DEFAULT_DATE_FORMAT)
+    output_dir = f"{PROCESSED_DATA_PATH}/{VIIRS_PRODUCT}_{date_start.year}/"
+    ds_to_download = date_range(date_start, date_end)
+    uncompleted_dates = []
+    log_file = f"{output_dir}log.txt"
+
+    if today <= date_end:
+        logger.warning("Unable to update VIIRS data yet")
+        return None
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    if os.path.exists(log_file):
+        with open(log_file) as json_file:
+            log_data = json.load(json_file)
+            status = log_data["status"]
+            ds_to_download = log_data["uncompleted_dates"]
+        if status == "OK":
+            logger.info("VIIRS data already updated")
+            return None
+
+    logger.info("Running VIIRS ETL")
+
+    logger.info("Setting domain...")
+    set_domain(DOMAIN_DATA_PATH)
+    apply_mask(REGION_DATA_PATH)
+
+    logger.info("Downloading VIIRS data...")
+    viirs_rasters = []
+    for ds in ds_to_download:
+        try:
+            logger.info(f"Date: {ds}")
+            if not get_modis_files(
+                VIIRS_PRODUCT,
+                VIIRS_COLLECTION,
+                start_date=ds,
+                **MODIS_REGION,  # type: ignore
+            ):
+                continue
+
+            outname = f"viirs_{ds}"
+            current_viirs_path = f"{MODIS_DATASET_PATH}/{VIIRS_PRODUCT}/{ds}/"
+            get_viirs_mosaic(current_viirs_path, 4, output_dir, f"{outname}.tif")
+            import_gtiff(f"{output_dir}{outname}.tif", outname)
+            viirs_rasters.append(outname)
+        except Exception as e:
+            logger.critical(f"Not found VIIRS for {ds}: {e}")
+            uncompleted_dates.append(ds)
+
+    logger.info("Computing VIIRS average...")
+    try:
+        raster_name = f"viirs_night_lights_{date_start.year}"
+        compute_mean(viirs_rasters, raster_name)
+        refresh_region()
+        raster2gtiff(raster_name, f"{output_dir}{raster_name}")
+        log_data = {"status": "OK", "uncompleted_dates": uncompleted_dates}
+    except Exception as e:
+        logger.critical(f"Uncompleted VIIRS update: {e}")
+        log_data = {"status": "FAIL", "uncompleted_dates": uncompleted_dates}
+
+    with open(log_file, "w") as outfile:
+        json.dump(log_data, outfile)
+
+    return None

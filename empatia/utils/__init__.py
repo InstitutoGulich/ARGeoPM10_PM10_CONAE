@@ -3,9 +3,11 @@ import glob
 import numpy as np
 import datetime as dt
 import shutil
+import json
 from pathlib import Path
 from typing import Dict, List, Union
 from empatia.settings.constants import DEFAULT_DATE_FORMAT
+from empatia.settings.log import logger
 
 
 def date_range(start: dt.date, end: dt.date) -> List[str]:
@@ -16,6 +18,45 @@ def date_range(start: dt.date, end: dt.date) -> List[str]:
         date_list.append(day.strftime(DEFAULT_DATE_FORMAT))
 
     return date_list
+
+
+def get_dates_to_download_for_a_range(start_date: str, end_date: str = None) -> List[str]:
+    if not end_date:
+        return [start_date]
+    date_format = "%Y-%m-%d"
+    start_date_dt = dt.datetime.strptime(start_date, date_format)
+    end_date_dt = dt.datetime.strptime(end_date, date_format)
+    return [
+        (start_date_dt + dt.timedelta(days=days)).strftime(date_format)
+        for days in range((end_date_dt - start_date_dt).days + 1)
+    ]
+
+
+def get_dates_to_download(log_file: str, today: dt.datetime) -> List[str]:
+    min_exec_date = dt.datetime.strftime(
+        today - dt.timedelta(days=90), DEFAULT_DATE_FORMAT
+    )
+    logger.info("Running ETL ...")
+    if os.path.exists(log_file):
+        with open(log_file) as json_file:
+            log_data = json.load(json_file)
+            uncompleted_dates = log_data["uncompleted_dates"]
+            date_start = dt.datetime.strptime(
+                log_data["last_execution_date"], DEFAULT_DATE_FORMAT
+            )
+    else:
+        uncompleted_dates = []
+        date_start = today
+    dates_to_download = list(set(uncompleted_dates + date_range(date_start, today)))
+    dates_to_download = sorted(filter(lambda x: x >= min_exec_date, dates_to_download))
+    return dates_to_download
+
+
+def get_total_cells(result: Dict) -> int:
+    cells_data = [k for k in result if k.startswith("cells")][0]
+    total_cells = int(cells_data.replace(" ", "")[6:])
+    logger.debug(f"Total cells in Argentina: {total_cells}")
+    return total_cells
 
 
 def get_qa_class(x: float) -> int:
@@ -75,3 +116,20 @@ def remove_file(path: str) -> None:
         print(f"Deleted file: {path}")
     else:
         print(f"No {path} file to delete")
+
+def update_log_data(dates_to_download: List[str], log_file: str, uncompleted_dates: List[str]) -> None:
+    """
+    Update log data with the last execution date and the uncompleted dates for the next execution
+    
+    Args:
+        dates_to_download (List[str]): List of dates that were attempted to be downloaded and processed in the current execution
+        log_file (str): Path to the log file where data is stored
+        new_uncompleted_dates (List[str]): List of dates that were not completed in the current execution
+    """
+    last_execution_date = dates_to_download[-1]
+    log_data = {
+        "last_execution_date": last_execution_date,
+        "uncompleted_dates": sorted(set(uncompleted_dates)),
+    }
+    with open(log_file, "w") as outfile:
+        json.dump(log_data, outfile)

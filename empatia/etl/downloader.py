@@ -10,7 +10,12 @@ auth = earthaccess.login(strategy="environment",persist=False)
 harmony_client = Client(auth=(os.environ["EARTHDATA_USERNAME"], os.environ["EARTHDATA_PASSWORD"]))
 
 def get_data_earthdata(
-        short_name: str, bbox: tuple, start_date: str, end_date: str, dst_path: str, variables=['all']
+    short_name: str, 
+    bbox: tuple, 
+    start_date: str, 
+    end_date: str, 
+    dst_path: str, 
+    variables=['all']
 ) -> List[Any]:
 
     bbox = BBox(*bbox)
@@ -38,8 +43,6 @@ def get_data_earthdata(
 
     except Exception as e:
         logger.error("Harmony request failed:", exc_info=e)
-
-    os.makedirs(dst_path, exist_ok=True)
 
     futures = harmony_client.download_all(job_id, directory=dst_path, overwrite=False)
 

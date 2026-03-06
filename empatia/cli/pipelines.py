@@ -213,7 +213,7 @@ def computing_ica(
 
 
 def computing_pm_10(
-        current_maiac_path: str,
+        maiac_dir_path: str,
         modis_outputs: List[Any],
         estimator: str,
         prediction_dir_path: str,
@@ -274,7 +274,7 @@ def computing_pm_10(
         # Create XML
         logger.debug(f"Creating XML for {pm10_file_path}...")
         maiac_files = [
-            os.path.basename(x) for x in glob.glob(f"{current_maiac_path}*.hdf")
+            os.path.basename(x) for x in glob.glob(f"{maiac_dir_path}*.hdf")
         ]
         merra_files = [
             fname.format(min_date.strftime("%Y%m%d"))
@@ -325,9 +325,7 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
         # Import to GRASS to reproject and rescale
         for modis_orbit, var in itertools.product(modis_outputs, variables):
             _, sensor, min_date = modis_orbit.values()
-            current_merra_path = (
-                f"NETCDF:{merra_filename[0]}:{var}"
-            )
+            merra__dir_path = (f"NETCDF:{merra_filename}:{var}")
             merra_band = min_date.hour + 1
             if shortname == MERRA_SHORTNAME:
                 merra_band = (min_date.hour // 3 + 1) - 4
@@ -336,9 +334,9 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
             rofile = f"{processed_dir}{rname}"
             remove_mask()
             try:
-                import_netcdf(current_merra_path, merra_band, rname)
+                import_netcdf(merra__dir_path, merra_band, rname)
             except Exception as e:
-                logger.warning(f"Error importing MERRA file {current_merra_path} as {rname}: {e}")
+                logger.warning(f"Error importing MERRA file {merra__dir_path} as {rname}: {e}")
                 continue
             
             get_resampling(rname)
@@ -349,16 +347,15 @@ def process_merra_data(date: str, modis_outputs: List[Any], processed_dir: str) 
 
 
 def process_modis_data(
-        current_maiac_path: str, 
+        maiac_dir_path: str, 
         date: str, 
         processed_dir_path: str, 
         total_cells: int
     ) -> List[Any]:
     
-    os.makedirs(current_maiac_path, exist_ok=True)
-    
+    os.makedirs(maiac_dir_path, exist_ok=True)
     if not get_modis_files(
-        current_maiac_path,
+        maiac_dir_path,
         MAIAC_PRODUCT,
         MAIAC_COLLECTION,
         **MODIS_REGION,
@@ -373,7 +370,7 @@ def process_modis_data(
     for band, prefix in MAIAC_BANDS.items():
         logger.info(f"********* {band} {prefix} *********")
         modis_outputs = get_modis_mosaic(
-            current_maiac_path, band, prefix, processed_dir_path
+            maiac_dir_path, band, prefix, processed_dir_path
         )
         # Import to GRASS to reproject and rescale
         orbits_to_clean = []
@@ -458,9 +455,9 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
 
         logger.info("Downloading MAIAC data...")
         try:
-            current_maiac_path = f"{MODIS_DATASET_PATH}/{MAIAC_PRODUCT}/{date}/"
+            maiac_dir_path = f"{MODIS_DATASET_PATH}/{MAIAC_PRODUCT}/{date}/"
             modis_outputs = process_modis_data(
-                current_maiac_path, date, processed_dir_path, total_cells
+                maiac_dir_path, date, processed_dir_path, total_cells
             )
 
             if not modis_outputs:
@@ -483,7 +480,7 @@ def daily_pipeline(start_date: str = None, end_date: str = None) -> None:
         logger.info("Computing PM10...")
         try:
             creation_date, log_prediction, min_date = computing_pm_10(
-                current_maiac_path,
+                maiac_dir_path,
                 modis_outputs,
                 estimator,
                 prediction_dir_path,

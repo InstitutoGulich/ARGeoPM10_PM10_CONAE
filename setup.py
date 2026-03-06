@@ -23,6 +23,7 @@ setup(
         "scikit-learn",
         "tqdm",
 	    "harmony-py",
+        "netCDF4",
         "earthaccess",
         # Note: GDAL/GRASS are provided by system packages or conda
     ],
